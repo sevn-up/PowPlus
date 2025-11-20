@@ -18,12 +18,23 @@ const AvalancheDetailModal = ({ show, onHide, forecast }) => {
         return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     };
 
+    // Helper to sanitize title - if it contains many hyphens or is too long, it's likely concatenated area names
+    const getDisplayTitle = (title) => {
+        if (!title) return 'Avalanche Forecast';
+        // Count hyphens - if more than 3, it's likely a concatenated list
+        const hyphenCount = (title.match(/-/g) || []).length;
+        if (hyphenCount > 3 || title.length > 50) {
+            return 'Avalanche Forecast';
+        }
+        return title;
+    };
+
     return (
         <Modal show={show} onHide={onHide} size="lg" className="avalanche-modal">
             <Modal.Header closeButton className="bg-dark text-white border-0">
                 <Modal.Title className="d-flex align-items-center gap-2">
                     <AlertTriangle size={24} className="text-warning" />
-                    {report.title}
+                    {getDisplayTitle(report.title)}
                 </Modal.Title>
             </Modal.Header>
 
@@ -32,7 +43,9 @@ const AvalancheDetailModal = ({ show, onHide, forecast }) => {
                 <div className="mb-4">
                     <div className="d-flex justify-content-between align-items-center mb-3">
                         <div>
-                            <small className="text-white-50">Forecaster: {report.forecaster}</small>
+                            <small className="text-white-50">
+                                Forecaster: {report.forecaster && report.forecaster.length < 100 ? report.forecaster : 'Avalanche Canada'}
+                            </small>
                         </div>
                         <div className="d-flex gap-2">
                             <Badge bg="secondary">
