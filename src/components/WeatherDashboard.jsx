@@ -235,6 +235,20 @@ const WeatherDashboard = () => {
                                 </div>
                             </div>
 
+                            {/* Powder Alert Banner */}
+                            {powderScore && powderScore.isPowderDay && (
+                                <Alert variant="info" className="glass-card border-0 shadow-lg d-flex align-items-center gap-3 mb-4 hover-scale transition-all">
+                                    <CloudSnow size={32} className="text-info" />
+                                    <div className="flex-grow-1">
+                                        <h5 className="mb-1 fw-bold text-white">🎿 Powder Alert!</h5>
+                                        <p className="mb-0 text-white-50">
+                                            {powderScore.snowfall24h}cm of fresh snow in the last 24 hours.
+                                            Powder score: <strong className="text-info">{powderScore.score}/10</strong> ({powderScore.rating})
+                                        </p>
+                                    </div>
+                                </Alert>
+                            )}
+
                             {/* Hourly Forecast Strip */}
                             <Card className="glass-card border-0 mb-4 text-white shadow-lg hover-scale transition-all">
                                 <Card.Body>
@@ -258,20 +272,6 @@ const WeatherDashboard = () => {
                                 </Card.Body>
                             </Card>
 
-                            {/* Powder Alert Banner */}
-                            {powderScore && powderScore.isPowderDay && (
-                                <Alert variant="info" className="glass-card border-0 shadow-lg d-flex align-items-center gap-3">
-                                    <CloudSnow size={32} className="text-info" />
-                                    <div className="flex-grow-1">
-                                        <h5 className="mb-1 fw-bold text-white">🎿 Powder Alert!</h5>
-                                        <p className="mb-0 text-white-50">
-                                            {powderScore.snowfall24h}cm of fresh snow in the last 24 hours.
-                                            Powder score: <strong className="text-info">{powderScore.score}/10</strong> ({powderScore.rating})
-                                        </p>
-                                    </div>
-                                </Alert>
-                            )}
-
                             {/* Avalanche Safety Card */}
                             {avalancheForecast && avalancheForecast.report && (
                                 <Card
@@ -284,9 +284,11 @@ const WeatherDashboard = () => {
                                             <div className="d-flex align-items-center gap-2 text-white-50 text-uppercase fw-bold small">
                                                 <AlertTriangle size={16} /> Avalanche Forecast
                                             </div>
-                                            <Badge bg="secondary">
-                                                {avalancheForecast.area?.name || 'BC Backcountry'}
-                                            </Badge>
+                                            {avalancheForecast.area?.name && !avalancheForecast.area.name.match(/^[0-9a-f]{64}$/) && (
+                                                <Badge bg="secondary">
+                                                    {avalancheForecast.area.name}
+                                                </Badge>
+                                            )}
                                         </div>
 
                                         {avalancheForecast.report.dangerRatings && avalancheForecast.report.dangerRatings[0] && (
@@ -377,46 +379,118 @@ const WeatherDashboard = () => {
 
                             {/* Bento Grid */}
                             <Row className="g-4">
-                                {/* 2-Day Outlook */}
+                                {/* Snowfall Tracking */}
                                 <Col md={6}>
                                     <Card className="glass-card border-0 h-100 text-white shadow-lg hover-scale transition-all">
                                         <Card.Body>
                                             <div className="d-flex align-items-center gap-2 mb-4 text-white-50 text-uppercase fw-bold small">
-                                                <Calendar size={16} /> 2-Day Outlook
+                                                <Snowflake size={16} /> Snowfall Tracking
                                             </div>
                                             <div className="d-flex flex-column gap-3">
-                                                {[0, 24].map((offset, i) => {
-                                                    const daySlice = weather.hourly.temperature_2m.slice(offset, offset + 24);
-                                                    const snowSlice = weather.hourly.snowfall.slice(offset, offset + 24);
-                                                    const maxTemp = Math.round(Math.max(...daySlice));
-                                                    const minTemp = Math.round(Math.min(...daySlice));
-                                                    const totalSnow = snowSlice.reduce((a, b) => a + b, 0).toFixed(1);
-                                                    const date = new Date(weather.hourly.time[offset]);
-                                                    const dayName = i === 0 ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'long' });
+                                                {(() => {
+                                                    // Find current hour index (where past data ends and forecast begins)
+                                                    const now = new Date();
+                                                    const currentHourIndex = weather.hourly.time.findIndex(t => new Date(t) >= now);
+
+                                                    // Calculate days until next snowfall and predicted amount
+                                                    let daysUntilSnow = null;
+                                                    let nextSnowAmount = 0;
+                                                    for (let i = currentHourIndex; i < weather.hourly.snowfall.length; i++) {
+                                                        if (weather.hourly.snowfall[i] > 0) {
+                                                            if (daysUntilSnow === null) {
+                                                                daysUntilSnow = Math.floor((i - currentHourIndex) / 24);
+                                                            }
+                                                            // Sum up snowfall for the day of first snow
+                                                            const dayStart = currentHourIndex + (daysUntilSnow * 24);
+                                                            const dayEnd = Math.min(dayStart + 24, weather.hourly.snowfall.length);
+                                                            for (let j = dayStart; j < dayEnd; j++) {
+                                                                nextSnowAmount += weather.hourly.snowfall[j];
+                                                            }
+                                                            break;
+                                                        }
+                                                    }
+
+                                                    // Calculate days since last snowfall and amount using historical data
+                                                    let daysSinceSnow = null;
+                                                    let lastSnowAmount = 0;
+
+                                                    // Search backward through historical data (before current hour)
+                                                    for (let i = currentHourIndex - 1; i >= 0; i--) {
+                                                        if (weather.hourly.snowfall[i] > 0) {
+                                                            const hoursSince = currentHourIndex - i;
+                                                            daysSinceSnow = Math.floor(hoursSince / 24);
+
+                                                            // Find the start of that day and sum all snowfall
+                                                            const snowDayEnd = i;
+                                                            let snowDayStart = i;
+                                                            // Go back to find all snow from that day
+                                                            while (snowDayStart > 0 && (i - snowDayStart) < 24) {
+                                                                if (weather.hourly.snowfall[snowDayStart - 1] > 0) {
+                                                                    snowDayStart--;
+                                                                } else {
+                                                                    break;
+                                                                }
+                                                            }
+                                                            // Sum snowfall for that day
+                                                            for (let j = snowDayStart; j <= snowDayEnd; j++) {
+                                                                lastSnowAmount += weather.hourly.snowfall[j];
+                                                            }
+                                                            break;
+                                                        }
+                                                    }
 
                                                     return (
-                                                        <div key={i} className="d-flex align-items-center justify-content-between p-3 rounded-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
-                                                            <span style={{ width: '80px' }} className="fw-bold text-white">{dayName}</span>
-                                                            <div className="flex-grow-1 d-flex justify-content-center">
-                                                                {totalSnow > 0 ? (
-                                                                    <div className="d-flex align-items-center gap-1 text-info">
-                                                                        <Snowflake size={16} />
-                                                                        <small className="fw-bold">{totalSnow} cm</small>
+                                                        <>
+                                                            {/* Days Until Next Snowfall */}
+                                                            <div className="d-flex align-items-center justify-content-between p-3 rounded-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                                                <div className="d-flex flex-column flex-grow-1">
+                                                                    <small className="text-white-50 mb-1">Days Until Next Snowfall</small>
+                                                                    <div className="d-flex align-items-center gap-2">
+                                                                        <Snowflake size={20} className="text-info" />
+                                                                        <span className="fs-3 fw-bold text-white">
+                                                                            {daysUntilSnow !== null ? daysUntilSnow : '7+'}
+                                                                        </span>
+                                                                        <span className="text-white-50">
+                                                                            {daysUntilSnow === 0 ? 'Today!' : daysUntilSnow === 1 ? 'day' : 'days'}
+                                                                        </span>
                                                                     </div>
-                                                                ) : (
-                                                                    <Sun size={16} className="text-warning opacity-50" />
+                                                                </div>
+                                                                {nextSnowAmount > 0 && (
+                                                                    <div className="text-end">
+                                                                        <small className="text-white-50 d-block mb-1">Predicted</small>
+                                                                        <div className="badge bg-info bg-opacity-25 text-info fs-6 px-3 py-2">
+                                                                            {nextSnowAmount.toFixed(1)} cm
+                                                                        </div>
+                                                                    </div>
                                                                 )}
                                                             </div>
-                                                            <div className="d-flex align-items-center gap-3" style={{ width: '120px' }}>
-                                                                <small className="text-white fw-medium">{minTemp}°</small>
-                                                                <div className="flex-grow-1 rounded-pill" style={{ height: '4px', backgroundColor: 'rgba(255, 255, 255, 0.2)' }}>
-                                                                    <div className="bg-gradient-to-r from-info to-warning h-100 rounded-pill shadow-sm" style={{ width: '60%', marginLeft: '20%' }}></div>
+
+                                                            {/* Days Since Last Snowfall */}
+                                                            <div className="d-flex align-items-center justify-content-between p-3 rounded-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                                                <div className="d-flex flex-column flex-grow-1">
+                                                                    <small className="text-white-50 mb-1">Since Last Snowfall</small>
+                                                                    <div className="d-flex align-items-center gap-2">
+                                                                        <Calendar size={20} className="text-white-50" />
+                                                                        <span className="fs-3 fw-bold text-white">
+                                                                            {daysSinceSnow !== null ? daysSinceSnow : '7+'}
+                                                                        </span>
+                                                                        <span className="text-white-50">
+                                                                            {daysSinceSnow === 0 ? 'Today' : daysSinceSnow === 1 ? 'day ago' : 'days ago'}
+                                                                        </span>
+                                                                    </div>
                                                                 </div>
-                                                                <span className="fw-bold text-white">{maxTemp}°</span>
+                                                                {lastSnowAmount > 0 && (
+                                                                    <div className="text-end">
+                                                                        <small className="text-white-50 d-block mb-1">Amount</small>
+                                                                        <div className="badge bg-info bg-opacity-25 text-info fs-6 px-3 py-2">
+                                                                            {lastSnowAmount.toFixed(1)} cm
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        </div>
+                                                        </>
                                                     );
-                                                })}
+                                                })()}
                                             </div>
                                         </Card.Body>
                                     </Card>

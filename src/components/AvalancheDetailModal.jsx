@@ -30,7 +30,7 @@ const AvalancheDetailModal = ({ show, onHide, forecast }) => {
     };
 
     return (
-        <Modal show={show} onHide={onHide} size="lg" className="avalanche-modal">
+        <Modal show={show} onHide={onHide} size="xl" className="avalanche-modal">
             <Modal.Header closeButton className="bg-dark text-white border-0">
                 <Modal.Title className="d-flex align-items-center gap-2">
                     <AlertTriangle size={24} className="text-warning" />

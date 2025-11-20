@@ -23,7 +23,8 @@ export const getWeather = async (lat, lon) => {
         hourly: 'temperature_2m,snowfall,freezing_level_height,snow_depth,visibility,wind_gusts_10m,wind_speed_10m,wind_direction_10m,precipitation_probability,cloud_cover,surface_pressure,is_day',
         daily: 'temperature_2m_max,temperature_2m_min,snowfall_sum,precipitation_probability_max,sunrise,sunset,wind_speed_10m_max',
         timezone: 'auto',
-        forecast_days: 10
+        forecast_days: 10,
+        past_days: 7
     });
 
     const response = await fetch(`${WEATHER_URL}?${params.toString()}`);
