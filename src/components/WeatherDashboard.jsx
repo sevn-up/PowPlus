@@ -6,16 +6,7 @@ import { getClosestAvalancheForecast, parseDangerRating, formatHighlights } from
 import { calculatePowderScore, calculateSnowfallTotal, getBestSkiingWindow } from '../services/powderTracker';
 import { locations, getLocationByName, getResorts, getBackcountryZones } from '../data/locationData';
 import AvalancheDetailModal from './AvalancheDetailModal';
-import WeatherAnimation from './WeatherAnimation';
-
-const getBackgroundImage = (weatherCode) => {
-    // WMO Weather interpretation codes (WW)
-    if (weatherCode === 0 || weatherCode === 1) return '/bg-modern-clear.png';
-    if (weatherCode === 2 || weatherCode === 3 || weatherCode === 45 || weatherCode === 48) return '/bg-modern-cloudy.png';
-    if ([71, 73, 75, 77, 85, 86].includes(weatherCode)) return '/bg-modern-snow.png';
-    if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99].includes(weatherCode)) return '/bg-modern-rain.png';
-    return '/bg-modern-clear.png'; // Default
-};
+import AnimatedBackground from './AnimatedBackground';
 
 const WeatherDashboard = () => {
     const [town, setTown] = useState('Whistler');
@@ -86,13 +77,6 @@ const WeatherDashboard = () => {
         fetchWeather('Whistler');
     }, []);
 
-    useEffect(() => {
-        if (weather) {
-            const bgImage = getBackgroundImage(weather.current.weather_code);
-            document.body.style.backgroundImage = `url('${bgImage}')`;
-        }
-    }, [weather]);
-
     const handleSearch = (e) => {
         e.preventDefault();
         if (!town) return;
@@ -101,8 +85,15 @@ const WeatherDashboard = () => {
 
     return (
         <>
-            {/* Animated Weather Background */}
-            {weather && <WeatherAnimation weatherCode={weather.current.weather_code} />}
+            {/* Animated Background */}
+            {weather && (
+                <AnimatedBackground
+                    weatherCode={weather.current.weather_code}
+                    currentTime={new Date().getTime()}
+                    sunrise={new Date(weather.daily.sunrise[0]).getTime()}
+                    sunset={new Date(weather.daily.sunset[0]).getTime()}
+                />
+            )}
 
             <div className="d-flex h-100 w-100 overflow-hidden">
                 {/* Desktop Sidebar */}
@@ -289,8 +280,13 @@ const WeatherDashboard = () => {
                                     onClick={() => setShowAvalancheModal(true)}
                                 >
                                     <Card.Body>
-                                        <div className="d-flex align-items-center gap-2 text-white-50 text-uppercase fw-bold small mb-3">
-                                            <AlertTriangle size={16} /> Avalanche Forecast
+                                        <div className="d-flex align-items-center justify-content-between mb-3">
+                                            <div className="d-flex align-items-center gap-2 text-white-50 text-uppercase fw-bold small">
+                                                <AlertTriangle size={16} /> Avalanche Forecast
+                                            </div>
+                                            <Badge bg="secondary">
+                                                {avalancheForecast.area?.name || 'BC Backcountry'}
+                                            </Badge>
                                         </div>
 
                                         {avalancheForecast.report.dangerRatings && avalancheForecast.report.dangerRatings[0] && (

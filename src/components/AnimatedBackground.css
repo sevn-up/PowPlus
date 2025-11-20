@@ -1,0 +1,282 @@
+/* Animated Background Base Styles */
+.animated-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    overflow: hidden;
+    transition: background 1s ease;
+}
+
+.weather-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+/* ===== CLEAR SKY BACKGROUNDS ===== */
+
+/* Clear Sunrise */
+.animated-background.clear.sunrise {
+    background: linear-gradient(180deg,
+            #FF6B6B 0%,
+            #FFA07A 25%,
+            #FFD700 50%,
+            #87CEEB 100%);
+}
+
+/* Clear Day */
+.animated-background.clear.day {
+    background: linear-gradient(180deg,
+            #4A90E2 0%,
+            #87CEEB 50%,
+            #B0E0E6 100%);
+}
+
+/* Clear Sunset */
+.animated-background.clear.sunset {
+    background: linear-gradient(180deg,
+            #FF4500 0%,
+            #FF6347 25%,
+            #FF69B4 50%,
+            #4B0082 100%);
+}
+
+/* Clear Night */
+.animated-background.clear.night {
+    background: linear-gradient(180deg,
+            #0B1929 0%,
+            #1a2332 50%,
+            #2c3e50 100%);
+}
+
+/* Stars for night clear sky */
+.stars {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+.star {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background: white;
+    border-radius: 50%;
+    animation: twinkle 3s infinite;
+}
+
+@keyframes twinkle {
+
+    0%,
+    100% {
+        opacity: 0.3;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+/* ===== CLOUDY SKY BACKGROUNDS ===== */
+
+/* Cloudy Sunrise */
+.animated-background.cloudy.sunrise {
+    background: linear-gradient(180deg,
+            #D4A574 0%,
+            #E8C4A0 50%,
+            #C9B8A8 100%);
+}
+
+/* Cloudy Day */
+.animated-background.cloudy.day {
+    background: linear-gradient(180deg,
+            #6B8CAE 0%,
+            #A8BFD8 50%,
+            #C9D6E3 100%);
+}
+
+/* Cloudy Sunset */
+.animated-background.cloudy.sunset {
+    background: linear-gradient(180deg,
+            #CD853F 0%,
+            #BC9A7C 50%,
+            #A0826D 100%);
+}
+
+/* Cloudy Night */
+.animated-background.cloudy.night {
+    background: linear-gradient(180deg,
+            #1a2332 0%,
+            #2c3e50 50%,
+            #34495e 100%);
+}
+
+/* ===== SNOW BACKGROUNDS ===== */
+
+/* Snow Sunrise */
+.animated-background.snow.sunrise {
+    background: linear-gradient(180deg,
+            #FFB6C1 0%,
+            #E6C9D8 50%,
+            #D8BFD8 100%);
+}
+
+/* Snow Day */
+.animated-background.snow.day {
+    background: linear-gradient(180deg,
+            #7A8FA3 0%,
+            #A5B8C9 50%,
+            #C8D5E3 100%);
+}
+
+/* Snow Sunset */
+.animated-background.snow.sunset {
+    background: linear-gradient(180deg,
+            #DDA0DD 0%,
+            #C8A2C8 50%,
+            #9370DB 100%);
+}
+
+/* Snow Night */
+.animated-background.snow.night {
+    background: linear-gradient(180deg,
+            #1a2332 0%,
+            #2c3e50 50%,
+            #3d5266 100%);
+}
+
+/* ===== RAIN BACKGROUNDS ===== */
+
+/* Rain Sunrise */
+.animated-background.rain.sunrise {
+    background: linear-gradient(180deg,
+            #8B7355 0%,
+            #9B8B7E 50%,
+            #A89F94 100%);
+}
+
+/* Rain Day */
+.animated-background.rain.day {
+    background: linear-gradient(180deg,
+            #5A6F85 0%,
+            #7A8FA3 50%,
+            #9BAAB8 100%);
+}
+
+/* Rain Sunset */
+.animated-background.rain.sunset {
+    background: linear-gradient(180deg,
+            #8B4513 0%,
+            #A0522D 50%,
+            #6B4423 100%);
+}
+
+/* Rain Night */
+.animated-background.rain.night {
+    background: linear-gradient(180deg,
+            #0f1419 0%,
+            #1a2332 50%,
+            #2c3e50 100%);
+}
+
+/* ===== FOG BACKGROUNDS ===== */
+
+/* Fog Sunrise */
+.animated-background.fog.sunrise {
+    background: linear-gradient(180deg,
+            #D4C5B9 0%,
+            #DDD0C6 20%,
+            #E0D5CC 40%,
+            #E7DDD5 60%,
+            #EDE5DD 80%,
+            #F2EBE5 100%);
+}
+
+/* Fog Day */
+.animated-background.fog.day {
+    background: linear-gradient(180deg,
+            #8B9DAF 0%,
+            #9DADB9 20%,
+            #B0BCC8 40%,
+            #B8C5D6 60%,
+            #C6D0DD 80%,
+            #D4DCE6 100%);
+}
+
+/* Fog Sunset */
+.animated-background.fog.sunset {
+    background: linear-gradient(180deg,
+            #B8A89A 0%,
+            #BFB0A3 20%,
+            #C5B7AA 40%,
+            #C9BDB1 60%,
+            #CFC4B9 80%,
+            #D4C8BC 100%);
+}
+
+/* Fog Night */
+.animated-background.fog.night {
+    background: linear-gradient(180deg,
+            #2c3e50 0%,
+            #314555 20%,
+            #364c5a 40%,
+            #3b5260 60%,
+            #425970 80%,
+            #4a5f7f 100%);
+}
+
+/* ===== FOG LAYERS ===== */
+
+.fog-container {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.fog-layer {
+    position: absolute;
+    width: 200%;
+    height: 100%;
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.3) 25%,
+            rgba(255, 255, 255, 0.4) 50%,
+            rgba(255, 255, 255, 0.3) 75%,
+            transparent 100%);
+    animation: drift 20s infinite linear;
+}
+
+.fog-layer-1 {
+    top: 0;
+    opacity: 0.6;
+}
+
+.fog-layer-2 {
+    top: 33%;
+    opacity: 0.4;
+    animation-duration: 25s;
+    animation-direction: reverse;
+}
+
+.fog-layer-3 {
+    top: 66%;
+    opacity: 0.5;
+    animation-duration: 30s;
+}
+
+@keyframes drift {
+    0% {
+        transform: translateX(-50%);
+    }
+
+    100% {
+        transform: translateX(0);
+    }
+}
