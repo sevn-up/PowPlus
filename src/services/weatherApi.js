@@ -19,8 +19,8 @@ export const getWeather = async (lat, lon) => {
     const params = new URLSearchParams({
         latitude: lat,
         longitude: lon,
-        current: 'temperature_2m,weather_code,snowfall,wind_speed_10m,wind_direction_10m',
-        hourly: 'temperature_2m,snowfall,freezing_level_height,snow_depth,visibility,wind_gusts_10m,wind_speed_10m,wind_direction_10m,precipitation_probability,cloud_cover,surface_pressure,is_day',
+        current: 'temperature_2m,apparent_temperature,weather_code,snowfall,snow_depth,wind_speed_10m,wind_direction_10m',
+        hourly: 'temperature_2m,apparent_temperature,snowfall,freezing_level_height,snow_depth,visibility,wind_gusts_10m,wind_speed_10m,wind_direction_10m,precipitation_probability,cloud_cover,surface_pressure,is_day',
         daily: 'temperature_2m_max,temperature_2m_min,snowfall_sum,precipitation_probability_max,sunrise,sunset,wind_speed_10m_max',
         timezone: 'auto',
         forecast_days: 10,

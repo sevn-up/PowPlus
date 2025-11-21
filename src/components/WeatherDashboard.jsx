@@ -1,23 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Form, Button, Navbar, Nav, Offcanvas, Badge, Alert } from 'react-bootstrap';
-import { Search, Snowflake, Wind, Thermometer, Mountain, MapPin, Calendar, Droplets, Sun, Menu, Eye, Ruler, AlertTriangle, TrendingUp, CloudSnow, Sunrise, Sunset } from 'lucide-react';
+import { Container, Row, Col, Card, Form, Button, Navbar, Nav, Offcanvas, Badge, Alert, Modal } from 'react-bootstrap';
+import { Search, Snowflake, Wind, Thermometer, Mountain, MapPin, Calendar, Droplets, Sun, Menu, Eye, Ruler, AlertTriangle, TrendingUp, CloudSnow, Sunrise, Sunset, ArrowLeft, Maximize2, Minimize2, X, ChevronRight } from 'lucide-react';
 import { getCoordinates, getWeather, getWeatherDescription } from '../services/weatherApi';
 import { getClosestAvalancheForecast, parseDangerRating, formatHighlights } from '../services/avalancheApi';
 import { calculatePowderScore, calculateSnowfallTotal, getBestSkiingWindow } from '../services/powderTracker';
 import { locations, getLocationByName, getResorts, getBackcountryZones } from '../data/locationData';
 import AvalancheDetailModal from './AvalancheDetailModal';
 import AnimatedBackground from './AnimatedBackground';
+import MapComponent from './MapComponent';
 
-const WeatherDashboard = () => {
-    const [town, setTown] = useState('Whistler');
+const WeatherDashboard = ({ selectedLocation = null, onBack = null }) => {
+    const [town, setTown] = useState(selectedLocation?.name || 'Whistler');
     const [weather, setWeather] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [avalancheForecast, setAvalancheForecast] = useState(null);
     const [showAvalancheModal, setShowAvalancheModal] = useState(false);
     const [powderScore, setPowderScore] = useState(null);
-    const [currentLocation, setCurrentLocation] = useState(null);
+    const [currentLocation, setCurrentLocation] = useState(selectedLocation);
     const [locationFilter, setLocationFilter] = useState('all'); // 'all', 'resort', 'backcountry'
+    const [isMapExpanded, setIsMapExpanded] = useState(false);
 
     // Get all locations from database
     const allLocations = locations.map(loc => loc.name);
@@ -73,9 +75,18 @@ const WeatherDashboard = () => {
         }
     };
 
+    // Update currentLocation and fetch weather when selectedLocation changes
     useEffect(() => {
-        fetchWeather('Whistler');
-    }, []);
+        if (selectedLocation) {
+            console.log('🔄 WeatherDashboard received new location:', selectedLocation);
+            setCurrentLocation(selectedLocation);
+            setTown(selectedLocation.name);
+            fetchWeather(selectedLocation.name);
+        } else {
+            // Default to Whistler if no location selected
+            fetchWeather('Whistler');
+        }
+    }, [selectedLocation]);
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -83,10 +94,37 @@ const WeatherDashboard = () => {
         fetchWeather(town);
     };
 
+    if (loading) {
+        return (
+            <div className="d-flex justify-content-center align-items-center vh-100 bg-dark text-white">
+                <div className="spinner-border text-primary" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="d-flex justify-content-center align-items-center vh-100 bg-dark text-white">
+                <Container>
+                    <Alert variant="danger" className="mx-auto" style={{ maxWidth: '500px' }}>
+                        <Alert.Heading>Error Loading Weather</Alert.Heading>
+                        <p>{error}</p>
+                        <div className="d-flex gap-2">
+                            <Button variant="outline-danger" onClick={() => fetchWeather(town)}>Retry</Button>
+                            {onBack && <Button variant="link" onClick={onBack}>Go Back</Button>}
+                        </div>
+                    </Alert>
+                </Container>
+            </div>
+        );
+    }
+
     return (
         <>
             {/* Animated Background */}
-            {weather && (
+            {weather && weather.current && weather.daily && weather.daily.sunrise && weather.daily.sunset && (
                 <AnimatedBackground
                     weatherCode={weather.current.weather_code}
                     currentTime={new Date().getTime()}
@@ -96,127 +134,38 @@ const WeatherDashboard = () => {
             )}
 
             <div className="d-flex h-100 w-100 overflow-hidden">
-                {/* Desktop Sidebar */}
-                <div className="d-none d-md-flex flex-column p-4 glass-sidebar" style={{ width: '320px', height: '100vh' }}>
-                    <div className="mb-4">
-                        <div className="d-flex align-items-center gap-2 mb-4 text-white">
-                            <img src="/logo.png" alt="PowPlus Logo" className="rounded-circle shadow-sm" style={{ width: '40px', height: '40px' }} />
-                            <span className="fw-bold fs-4 tracking-tight text-shadow-sm">POWPLUS</span>
-                        </div>
+                {/* Removed Desktop Sidebar - Now using Back Button */}
 
-                        <Form onSubmit={handleSearch} className="position-relative">
-                            <Form.Control
-                                type="text"
-                                placeholder="Search..."
-                                value={town}
-                                onChange={(e) => setTown(e.target.value)}
-                                className="bg-transparent text-white border-secondary rounded-pill ps-5 shadow-sm"
-                                style={{ backdropFilter: 'blur(5px)' }}
-                            />
-                            <Search className="position-absolute top-50 start-0 translate-middle-y ms-3 text-white-50" size={16} />
-                        </Form>
-                    </div>
-
-                    <div className="flex-grow-1 overflow-auto custom-scrollbar">
-                        <small className="text-uppercase text-white-50 fw-bold mb-3 d-block px-2">Ski Resorts</small>
-                        <div className="d-flex flex-column gap-2 mb-4">
-                            {getResorts().map((loc) => (
+                {/* Header with Breadcrumb Navigation */}
+                <Navbar variant="dark" expand={false} className="fixed-top glass-card shadow-lg" style={{ zIndex: 1000 }}>
+                    <Container fluid className="py-3">
+                        <div className="d-flex justify-content-between align-items-center">
+                            {onBack && currentLocation && (
                                 <Button
-                                    key={loc.name}
                                     variant="link"
-                                    onClick={() => fetchWeather(loc.name)}
-                                    className={`text-decoration-none text-start px-3 py-2 rounded-4 d-flex justify-content-between align-items-center transition-all hover-scale ${town === loc.name ? 'bg-primary bg-opacity-50 text-white shadow-md' : 'text-white-50 hover-bg-white-10'}`}
+                                    onClick={onBack}
+                                    className="text-white text-decoration-none d-flex align-items-center gap-2 p-0 align-self-start hover-scale"
                                 >
-                                    <div className="d-flex flex-column">
-                                        <span className="fw-medium">{loc.name}</span>
-                                        {loc.resortInfo && (
-                                            <small className="text-white-50" style={{ fontSize: '0.7rem' }}>
-                                                {loc.resortInfo.verticalDrop}m vertical
-                                            </small>
-                                        )}
-                                    </div>
-                                    {town === loc.name && <div className="bg-white rounded-circle shadow-sm" style={{ width: '8px', height: '8px' }}></div>}
+                                    <ArrowLeft size={20} />
+                                    <span className="fw-medium">Back to All Zones</span>
                                 </Button>
-                            ))}
+                            )}
+                            {!onBack && (
+                                <Navbar.Brand href="#" className="d-flex align-items-center gap-2">
+                                    <img src="/logo.png" alt="PowPlus Logo" className="rounded-circle" style={{ width: '30px', height: '30px' }} />
+                                    <span className="fw-bold text-shadow-sm">POWPLUS</span>
+                                </Navbar.Brand>
+                            )}
                         </div>
-
-                        <small className="text-uppercase text-white-50 fw-bold mb-3 d-block px-2">Backcountry</small>
-                        <div className="d-flex flex-column gap-2">
-                            {getBackcountryZones().map((loc) => (
-                                <Button
-                                    key={loc.name}
-                                    variant="link"
-                                    onClick={() => fetchWeather(loc.name)}
-                                    className={`text-decoration-none text-start px-3 py-2 rounded-4 d-flex justify-content-between align-items-center transition-all hover-scale ${town === loc.name ? 'bg-primary bg-opacity-50 text-white shadow-md' : 'text-white-50 hover-bg-white-10'}`}
-                                >
-                                    <div className="d-flex flex-column">
-                                        <span className="fw-medium">{loc.name}</span>
-                                        {loc.backcountryInfo && (
-                                            <small className="text-white-50" style={{ fontSize: '0.7rem' }}>
-                                                {loc.backcountryInfo.difficulty}
-                                            </small>
-                                        )}
-                                    </div>
-                                    {town === loc.name && <div className="bg-white rounded-circle shadow-sm" style={{ width: '8px', height: '8px' }}></div>}
-                                </Button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Mobile Navbar */}
-                <Navbar variant="dark" expand={false} className="d-md-none fixed-top glass-card m-3 shadow-lg">
-                    <Container fluid>
-                        <Navbar.Brand href="#" className="d-flex align-items-center gap-2">
-                            <img src="/logo.png" alt="PowPlus Logo" className="rounded-circle" style={{ width: '30px', height: '30px' }} />
-                            <span className="fw-bold text-shadow-sm">POWPLUS</span>
-                        </Navbar.Brand>
-                        <Navbar.Toggle aria-controls="offcanvasNavbar" onClick={() => setShowSidebar(true)} className="border-0" />
-                        <Navbar.Offcanvas
-                            id="offcanvasNavbar"
-                            aria-labelledby="offcanvasNavbarLabel"
-                            placement="start"
-                            show={showSidebar}
-                            onHide={() => setShowSidebar(false)}
-                            className="bg-dark text-white"
-                        >
-                            <Offcanvas.Header closeButton closeVariant="white">
-                                <Offcanvas.Title id="offcanvasNavbarLabel">Menu</Offcanvas.Title>
-                            </Offcanvas.Header>
-                            <Offcanvas.Body style={{ overflowY: 'auto' }} className="custom-scrollbar">
-                                <Form onSubmit={handleSearch} className="mb-4 position-relative">
-                                    <Form.Control
-                                        type="text"
-                                        placeholder="Search..."
-                                        value={town}
-                                        onChange={(e) => setTown(e.target.value)}
-                                        className="bg-secondary bg-opacity-25 text-white border-0 rounded-pill ps-5"
-                                    />
-                                    <Search className="position-absolute top-50 start-0 translate-middle-y ms-3 text-white-50" size={16} />
-                                </Form>
-                                <div className="d-flex flex-column gap-2">
-                                    {savedLocations.map((loc) => (
-                                        <Button
-                                            key={loc}
-                                            variant="link"
-                                            onClick={() => fetchWeather(loc)}
-                                            className="text-decoration-none text-white text-start px-0 fs-5"
-                                        >
-                                            {loc}
-                                        </Button>
-                                    ))}
-                                </div>
-                            </Offcanvas.Body>
-                        </Navbar.Offcanvas>
                     </Container>
                 </Navbar>
 
                 {/* Main Content */}
-                <div className="flex-grow-1 overflow-auto p-4 p-md-5" style={{ height: '100vh' }}>
+                <div className="w-100 overflow-auto p-4 p-md-5" style={{ minHeight: '100vh' }}>
                     {weather && (
                         <Container fluid="lg" className="mt-5 mt-md-0">
                             {/* Header */}
-                            <div className="text-center text-white mb-5">
+                            <div className="text-center text-white mb-4">
                                 <div className="d-inline-flex align-items-center gap-2 bg-dark bg-opacity-50 px-3 py-1 rounded-pill border border-white border-opacity-10 mb-3 shadow-sm backdrop-blur-md">
                                     <MapPin size={14} />
                                     <span className="small fw-bold">{weather.country}</span>
@@ -638,6 +587,62 @@ const WeatherDashboard = () => {
                                     </Card>
                                 </Col>
                             </Row>
+
+                            {/* Backcountry Wisdom Card */}
+                            {currentLocation && (
+                                <BackcountryWisdomCard
+                                    locationName={currentLocation.displayName || currentLocation.name}
+                                    weatherConditions={weather ? {
+                                        temp: Math.round(weather.current.temperature_2m),
+                                        description: getWeatherDescription(weather.current.weather_code),
+                                        snowfall: weather.current.snowfall
+                                    } : null}
+                                    avalancheDanger={avalancheForecast?.report?.dangerRatings?.[0] ? {
+                                        alpine: parseDangerRating(avalancheForecast.report.dangerRatings[0].ratings.alp?.rating?.value).level,
+                                        treeline: parseDangerRating(avalancheForecast.report.dangerRatings[0].ratings.tln?.rating?.value).level,
+                                        btl: parseDangerRating(avalancheForecast.report.dangerRatings[0].ratings.btl?.rating?.value).level
+                                    } : null}
+                                />
+                            )}
+
+                            {/* Map Section - Prominent placement */}
+                            <Card className="glass-card border-0 text-white shadow-lg mb-4">
+                                <Card.Body className="p-4">
+                                    <div className="d-flex align-items-center justify-content-between mb-3">
+                                        <div>
+                                            <div className="d-flex align-items-center gap-2 mb-2">
+                                                <MapPin size={20} className="text-info" />
+                                                <h5 className="mb-0 fw-bold text-white">Trip Planning Map</h5>
+                                            </div>
+                                            <small className="text-white-50">View avalanche zones and plan your route</small>
+                                        </div>
+                                        <Button
+                                            variant="info"
+                                            size="lg"
+                                            onClick={() => setIsMapExpanded(true)}
+                                            className="d-flex align-items-center gap-2"
+                                        >
+                                            <Maximize2 size={18} />
+                                            Open Full Map
+                                        </Button>
+                                    </div>
+
+                                    {currentLocation && (
+                                        <div style={{ height: '50vh', minHeight: '400px' }} className="rounded overflow-hidden">
+                                            <MapComponent
+                                                centerCoords={[currentLocation.coordinates.lat, currentLocation.coordinates.lon]}
+                                                areaGeoJson={null}
+                                                currentLocationName={currentLocation.displayName || currentLocation.name}
+                                                showAllLocations={false}
+                                                allLocations={[]}
+                                                highlightedLocations={[]}
+                                                onLocationClick={(location) => console.log('Nearby location clicked:', location)}
+                                                onZoneClick={(feature) => console.log('Zone clicked:', feature)}
+                                            />
+                                        </div>
+                                    )}
+                                </Card.Body>
+                            </Card>
                         </Container>
                     )}
                 </div>
@@ -648,6 +653,38 @@ const WeatherDashboard = () => {
                     onHide={() => setShowAvalancheModal(false)}
                     forecast={avalancheForecast}
                 />
+
+                {/* Expanded Map Modal */}
+                <Modal
+                    show={isMapExpanded}
+                    onHide={() => setIsMapExpanded(false)}
+                    fullscreen
+                    className="map-modal"
+                >
+                    <Modal.Header className="bg-dark text-white border-0 py-3">
+                        <div className="d-flex flex-column">
+                            <Modal.Title className="mb-1">Trip Planning Map</Modal.Title>
+                            <small className="text-white-50">{currentLocation?.displayName || currentLocation?.name}</small>
+                        </div>
+                        <Button
+                            variant="outline-light"
+                            onClick={() => setIsMapExpanded(false)}
+                            className="d-flex align-items-center gap-2"
+                        >
+                            <X size={20} />
+                            Close
+                        </Button>
+                    </Modal.Header>
+                    <Modal.Body className="p-0" style={{ height: 'calc(100vh - 70px)' }}>
+                        {currentLocation && (
+                            <MapComponent
+                                centerCoords={[currentLocation.coordinates.lat, currentLocation.coordinates.lon]}
+                                areaGeoJson={null}
+                                currentLocationName={currentLocation.displayName || currentLocation.name}
+                            />
+                        )}
+                    </Modal.Body>
+                </Modal>
             </div>
         </>
     );

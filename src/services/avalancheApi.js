@@ -49,6 +49,43 @@ export const getAvalancheForecastMetadata = async (lang = 'en') => {
 };
 
 /**
+ * Get danger rating from metadata by fuzzy matching zone name
+ * @param {Object} metadata - Full metadata object from API
+ * @param {string} zoneName - Name of the zone to find (e.g. "Sea-to-Sky")
+ * @returns {Object|null} Danger rating object { alp, tln, btl } or null
+ */
+export const getDangerRatingByZoneName = (metadata, zoneName) => {
+    if (!metadata || !zoneName) return null;
+
+    // Normalize zone name for comparison
+    const normalizedZone = zoneName.toLowerCase().replace(/-/g, ' ');
+
+    // Iterate through metadata regions to find a match
+    for (const regionId in metadata) {
+        const region = metadata[regionId];
+        const regionName = region.product?.title?.toLowerCase() || '';
+        const areaName = region.area?.name?.toLowerCase() || '';
+
+        if (regionName.includes(normalizedZone) || areaName.includes(normalizedZone)) {
+            // Found a match, look for current ratings
+            // The icons array usually contains the ratings history and forecast
+            // We want the one valid for today
+            const today = new Date().toISOString();
+            const currentRating = region.icons?.find(icon =>
+                icon.type === 'ratings' &&
+                icon.from <= today &&
+                icon.to >= today
+            );
+
+            if (currentRating) {
+                return currentRating.ratings; // { alp: 'low', tln: 'moderate', ... }
+            }
+        }
+    }
+    return null;
+};
+
+/**
  * Find the closest avalanche forecast to given coordinates
  * @param {number} lat - Latitude
  * @param {number} lon - Longitude
