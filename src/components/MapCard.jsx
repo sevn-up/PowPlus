@@ -32,8 +32,8 @@ const MapUpdater = ({ center }) => {
 };
 
 // Create custom icon for road events - Moved outside component to prevent recreation
-const createEventIcon = (eventType) => {
-    const typeInfo = parseEventType(eventType);
+const createEventIcon = (eventType, description = '') => {
+    const typeInfo = parseEventType(eventType, description);
 
     return L.divIcon({
         className: 'custom-event-marker',
@@ -60,13 +60,16 @@ const createEventIcon = (eventType) => {
 };
 
 // Icon cache to prevent recreation - MEMORY LEAK FIX
+// Cache key combines eventType and description for unique icons
 const eventIconCache = new Map();
 
-const getEventIcon = (eventType) => {
-    if (!eventIconCache.has(eventType)) {
-        eventIconCache.set(eventType, createEventIcon(eventType));
+const getEventIcon = (eventType, description = '') => {
+    // Create cache key from type and truncated description (first 50 chars to keep cache manageable)
+    const cacheKey = `${eventType}:${description.substring(0, 50)}`;
+    if (!eventIconCache.has(cacheKey)) {
+        eventIconCache.set(cacheKey, createEventIcon(eventType, description));
     }
-    return eventIconCache.get(eventType);
+    return eventIconCache.get(cacheKey);
 };
 
 const MapCard = ({ location, coordinates, avalancheForecast }) => {
@@ -122,11 +125,11 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                     east: -114,
                     west: -139
                 };
-                const events = await getDriveBCEvents(bounds);
+                const events = await getDriveBCEvents(bounds, 500);
                 if (isMounted) {
-                    // Prioritize and limit to 50 most severe events to reduce memory usage
-                    const prioritized = prioritizeEvents(events, 50);
-                    setDriveBCEvents(prioritized);
+                    // Filter to show all current road conditions across BC (no limit)
+                    const roadConditions = prioritizeEvents(events, 500);
+                    setDriveBCEvents(roadConditions);
                 }
             } catch (error) {
                 console.error('Failed to fetch DriveBC events:', error);
@@ -297,16 +300,17 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
             }
 
             const eventType = event.event_type || 'INCIDENT';
-            const typeInfo = parseEventType(eventType);
+            const eventDescription = event.description || '';
+            const typeInfo = parseEventType(eventType, eventDescription);
             const severityInfo = parseSeverity(event.severity);
             const roadNames = getRoadNames(event);
-            const nextUpdate = getNextUpdate(event.description);
+            const nextUpdate = getNextUpdate(eventDescription);
 
             return (
                 <Marker
                     key={`event-${event.id || idx}`}
                     position={[parsedLat, parsedLon]}
-                    icon={getEventIcon(eventType)}
+                    icon={getEventIcon(eventType, eventDescription)}
                 >
                     <Popup>
                         <div style={{ minWidth: '240px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>

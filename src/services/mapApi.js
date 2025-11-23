@@ -3,11 +3,12 @@ const DRIVEBC_BASE = 'https://api.open511.gov.bc.ca';
 /**
  * Fetch road events from DriveBC Open511 API
  * @param {Object} bounds - Optional map bounds to filter events {north, south, east, west}
+ * @param {number} limit - Maximum number of events to fetch (max 500)
  * @returns {Promise<Array>} Array of road events
  */
-export const getDriveBCEvents = async (bounds = null) => {
+export const getDriveBCEvents = async (bounds = null, limit = 500) => {
     try {
-        let url = `${DRIVEBC_BASE}/events?format=json&status=ACTIVE`;
+        let url = `${DRIVEBC_BASE}/events?format=json&status=ACTIVE&limit=${limit}`;
 
         // Add bbox parameter if bounds provided
         if (bounds) {
@@ -26,40 +27,148 @@ export const getDriveBCEvents = async (bounds = null) => {
 };
 
 /**
- * Parse event type to display information
+ * Check if event is a road closure
+ * @param {Object} event - Event object from API
+ * @returns {boolean} True if event is a road closure
+ */
+export const isRoadClosure = (event) => {
+    if (!event) return false;
+    const desc = (event.description || '').toLowerCase();
+    return desc.includes('road closed') ||
+        desc.includes('closure') ||
+        desc.includes('closed');
+};
+
+/**
+ * Parse event type to display information with enhanced natural disaster and closure detection
  * @param {string} eventType - Event type from API
+ * @param {string} description - Optional event description for detailed categorization
  * @returns {Object} Display info with icon, color, and label
  */
-export const parseEventType = (eventType) => {
-    const typeMap = {
-        'CONSTRUCTION': {
+export const parseEventType = (eventType, description = '') => {
+    const desc = description.toLowerCase();
+
+    // CRITICAL: Natural Disasters & Road Closures (INCIDENT type)
+    if (eventType === 'INCIDENT') {
+        // Landslide
+        if (desc.includes('landslide') || desc.includes('landslip')) {
+            return { label: 'Landslide', color: '#8B4513', icon: '🪨' };
+        }
+
+        // Flooding / Washout
+        if (desc.includes('flood') || desc.includes('washout')) {
+            return { label: 'Flooding', color: '#1E88E5', icon: '🌊' };
+        }
+
+        // Avalanche-related closure
+        if (desc.includes('avalanche') && (desc.includes('closed') || desc.includes('closure'))) {
+            return { label: 'Avalanche Closure', color: '#D32F2F', icon: '⛔' };
+        }
+
+        // General road closure
+        if (desc.includes('road closed') || desc.includes('closure')) {
+            return { label: 'Road Closed', color: '#C62828', icon: '🚫' };
+        }
+
+        // Default incident
+        return { label: 'Incident', color: '#FF4444', icon: '⚠️' };
+    }
+
+    // Enhanced ROAD_CONDITION sub-categorization
+    if (eventType === 'ROAD_CONDITION') {
+        // High Priority: Chains/4x4 Required (critical for trip planning)
+        if (desc.includes('chain') || desc.includes('4x4') || desc.includes('4wd')) {
+            return { label: 'Chains Required', color: '#FF6B35', icon: '⛓️' };
+        }
+
+        // High Priority: Ice conditions (safety critical)
+        if (desc.includes('black ice') || desc.includes('icy') || desc.includes('ice')) {
+            return { label: 'Ice Warning', color: '#4FC3F7', icon: '🧊' };
+        }
+
+        // High Priority: Snow on road
+        if (desc.includes('compact snow') || desc.includes('snow covered') ||
+            desc.includes('loose snow') || desc.includes('snow on road')) {
+            return { label: 'Snow on Road', color: '#81C3D7', icon: '🌨️' };
+        }
+
+        // Medium Priority: Drifting/blowing snow (visibility issue)
+        if (desc.includes('drifting') || desc.includes('blowing snow')) {
+            return { label: 'Blowing Snow', color: '#B0BEC5', icon: '💨' };
+        }
+
+        // Medium Priority: Visibility issues
+        if (desc.includes('fog') || desc.includes('visibility reduced') ||
+            desc.includes('limited visibility')) {
+            return { label: 'Poor Visibility', color: '#90A4AE', icon: '🌫️' };
+        }
+
+        // Medium Priority: Debris/obstacles
+        if (desc.includes('debris') || desc.includes('fallen rock') ||
+            desc.includes('rockfall') || desc.includes('fallen tree')) {
+            return { label: 'Debris', color: '#8D6E63', icon: '🪨' };
+        }
+
+        // Medium Priority: Slippery conditions
+        if (desc.includes('slippery') || desc.includes('slushy')) {
+            return { label: 'Slippery Road', color: '#FFA726', icon: '⚠️' };
+        }
+
+        // Default road condition
+        return { label: 'Road Condition', color: '#FFD700', icon: '🛣️' };
+    }
+
+    // Enhanced WEATHER_CONDITION sub-categorization
+    if (eventType === 'WEATHER_CONDITION') {
+        // Heavy snow
+        if (desc.includes('heavy snow') || desc.includes('snowfall') || desc.includes('snow storm')) {
+            return { label: 'Heavy Snow', color: '#1976D2', icon: '❄️' };
+        }
+
+        // Fog
+        if (desc.includes('fog') || desc.includes('limited visibility')) {
+            return { label: 'Fog', color: '#78909C', icon: '🌫️' };
+        }
+
+        // Rain
+        if (desc.includes('rain') || desc.includes('heavy rain') || desc.includes('storm')) {
+            return { label: 'Heavy Rain', color: '#0288D1', icon: '🌧️' };
+        }
+
+        // High winds
+        if (desc.includes('wind') || desc.includes('high wind') || desc.includes('gale')) {
+            return { label: 'High Winds', color: '#546E7A', icon: '💨' };
+        }
+
+        // Avalanche risk
+        if (desc.includes('avalanche')) {
+            return { label: 'Avalanche Risk', color: '#D32F2F', icon: '⚠️' };
+        }
+
+        // Default weather condition
+        return { label: 'Weather', color: '#4A90E2', icon: '☁️' };
+    }
+
+    // CONSTRUCTION - Less prominent since we're filtering most out
+    if (eventType === 'CONSTRUCTION') {
+        return {
             label: 'Construction',
             color: '#FFA500',
             icon: '🚧'
-        },
-        'INCIDENT': {
-            label: 'Incident',
-            color: '#FF4444',
-            icon: '⚠️'
-        },
-        'WEATHER_CONDITION': {
-            label: 'Weather',
-            color: '#4A90E2',
-            icon: '❄️'
-        },
-        'ROAD_CONDITION': {
-            label: 'Road Condition',
-            color: '#FFD700',
-            icon: '🛣️'
-        },
-        'SPECIAL_EVENT': {
+        };
+    }
+
+    // SPECIAL_EVENT
+    if (eventType === 'SPECIAL_EVENT') {
+        return {
             label: 'Special Event',
             color: '#9B59B6',
             icon: '📅'
-        }
-    };
+        };
+    }
 
-    return typeMap[eventType] || {
+    // Default
+    return {
         label: 'Other',
         color: '#95A5A6',
         icon: 'ℹ️'
@@ -146,112 +255,55 @@ export const getNextUpdate = (description) => {
 };
 
 /**
- * Prioritize events by severity and relevance to skiing (Key Routes)
+ * Check if event is a natural disaster
+ * @param {Object} event - Event object from API
+ * @returns {boolean} True if event is a natural disaster
+ */
+const isNaturalDisaster = (event) => {
+    if (!event || event.event_type !== 'INCIDENT') return false;
+    const desc = (event.description || '').toLowerCase();
+    return desc.includes('landslide') ||
+        desc.includes('flood') ||
+        desc.includes('washout') ||
+        (desc.includes('avalanche') && (desc.includes('closed') || desc.includes('closure')));
+};
+
+/**
+ * Prioritize events - FOCUS ON: Road Condition Advisories ONLY
  * @param {Array} events - Array of events
  * @param {number} limit - Maximum number of events to return
  * @returns {Array} Prioritized and limited events
  */
-export const prioritizeEvents = (events, limit = 75) => {
+export const prioritizeEvents = (events, limit = 500) => {
     if (!events || events.length === 0) return [];
 
-    // Key Ski Highways
-    const KEY_ROUTES = [
-        'Highway 99', // Sea-to-Sky
-        'Highway 1',  // TransCanada
-        'Highway 3',  // Crowsnest
-        'Highway 5',  // Coquihalla
-        'Highway 97'  // Okanagan
-    ];
+    // Helper to check if event is a current road condition advisory
+    const isCurrentRoadCondition = (event) => {
+        // Only show ROAD_CONDITION events
+        if (event.event_type !== 'ROAD_CONDITION') return false;
 
-    // Helper to check if event is on a key route
-    const isKeyRoute = (event) => {
-        if (!event.roads) return false;
-        return event.roads.some(road =>
-            KEY_ROUTES.some(keyRoute => road.name && road.name.includes(keyRoute))
-        );
-    };
-
-    // Helper to check if event is relevant
-    const isRelevant = (event) => {
-        const severity = parseSeverity(event.severity).priority;
-        const type = event.event_type;
-        const desc = event.description ? event.description.toLowerCase() : '';
-
-        // STALE DATA CHECK:
-        // If event hasn't been updated in 30 days, hide it to avoid "July construction" in November.
-        // EXCEPTIONS: Major Incidents (might be long term closures) or Road Conditions (seasonal).
+        // STALE DATA CHECK - If event hasn't been updated in 30 days, hide it
+        // Road conditions may persist for weeks (e.g., winter highway advisories)
         const daysSinceUpdate = (new Date() - new Date(event.updated)) / (1000 * 60 * 60 * 24);
-        if (daysSinceUpdate > 30 && severity < 3 && type !== 'ROAD_CONDITION') {
+        if (daysSinceUpdate > 30) {
             return false;
         }
 
-        // 1. ALWAYS SHOW: 
-        // - Major incidents (accidents, closures)
-        // - Weather conditions (snow, ice, fog)
-        // - High Severity events
-        if (type === 'INCIDENT' ||
-            type === 'WEATHER_CONDITION' ||
-            severity >= 3) return true;
-
-        // 2. ROAD CONDITIONS:
-        // - Only show if on a Key Route (e.g. Compact Snow on Hwy 5)
-        // - Filter out minor side roads (e.g. Nazko Rd)
-        if (type === 'ROAD_CONDITION') {
-            return isKeyRoute(event);
-        }
-
-        // 2. CONSTRUCTION: Be stricter. 
-        // - Hide if description says "no delay" or "minor delay" (unless Major severity)
-        // - Hide if description says "work on shoulders" (usually irrelevant)
-        // - Only show if it involves a closure, single lane, or major delay AND is on a Key Route
-        if (type === 'CONSTRUCTION') {
-            if (severity >= 3) return true;
-
-            // Explicitly exclude "no delay" or minor impact events
-            if (desc.includes('no delay') ||
-                desc.includes('expect minor delays') ||
-                desc.includes('work on shoulders')) return false;
-
-            const hasImpact = desc.includes('closed') ||
-                desc.includes('closure') ||
-                desc.includes('single lane') ||
-                desc.includes('major delay') ||
-                desc.includes('delays'); // General delays, but filtered by "minor" check above
-
-            return isKeyRoute(event) && hasImpact;
-        }
-
-        // 3. Default: Hide minor events even on key routes to reduce noise
-        return false;
+        // Show all current road conditions (no keyword filtering)
+        return true;
     };
 
     return events
-        .filter(isRelevant) // Filter out irrelevant minor events
+        .filter(isCurrentRoadCondition) // Filter to show ONLY current road conditions
         .sort((a, b) => {
             // 1. Sort by Severity (Highest first)
             const severityA = parseSeverity(a.severity).priority;
             const severityB = parseSeverity(b.severity).priority;
             if (severityB !== severityA) return severityB - severityA;
 
-            // 2. Sort by Type (Incidents/Weather/Road Conditions > Construction)
-            const getTypePriority = (type) => {
-                if (type === 'INCIDENT') return 4;
-                if (type === 'WEATHER_CONDITION') return 3;
-                if (type === 'ROAD_CONDITION') return 3;
-                if (type === 'CONSTRUCTION') return 1;
-                return 2;
-            };
-            const typeA = getTypePriority(a.event_type);
-            const typeB = getTypePriority(b.event_type);
-            if (typeB !== typeA) return typeB - typeA;
-
-            // 3. Sort by Key Route (Key routes first)
-            const keyA = isKeyRoute(a) ? 1 : 0;
-            const keyB = isKeyRoute(b) ? 1 : 0;
-            if (keyB !== keyA) return keyB - keyA;
-
-            // 4. Sort by Update Time (Newest first)
+            // 2. Sort by Recency (Newer first)
             return new Date(b.updated) - new Date(a.updated);
         })
-        .slice(0, limit);
+        .slice(0, limit); // Limit to requested number of events
 };
+

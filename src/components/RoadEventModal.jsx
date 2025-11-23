@@ -6,7 +6,7 @@ import { parseEventType, parseSeverity } from '../services/mapApi';
 const RoadEventModal = ({ show, onHide, event }) => {
     if (!event) return null;
 
-    const typeInfo = parseEventType(event.event_type);
+    const typeInfo = parseEventType(event.event_type, event.description);
     const severityInfo = parseSeverity(event.severity);
 
     // Format dates
