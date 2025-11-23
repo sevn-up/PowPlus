@@ -291,6 +291,277 @@ export const locations = [
             permits: 'Booking required',
             description: 'Cat skiing operation with deep coastal snow'
         }
+    },
+
+    // Additional Ski Resorts
+    {
+        name: 'Red Mountain',
+        displayName: 'Red Mountain Resort',
+        type: locationTypes.RESORT,
+        coordinates: { lat: 49.0967, lon: -117.8253 },
+        elevation: { base: 1185, summit: 2075 },
+        avalancheZone: 'Kootenay Boundary',
+        nearestWeatherStation: 41, // Kootenay Pass
+        resortInfo: {
+            verticalDrop: 890,
+            skiableAcres: 4200,
+            lifts: 7,
+            trails: 119,
+            website: 'https://www.redresort.com',
+            description: 'Legendary powder and tree skiing near Rossland'
+        }
+    },
+    {
+        name: 'Apex',
+        displayName: 'Apex Mountain Resort',
+        type: locationTypes.RESORT,
+        coordinates: { lat: 49.4667, lon: -119.9333 },
+        elevation: { base: 1508, summit: 2180 },
+        avalancheZone: 'South Columbia',
+        nearestWeatherStation: 14, // Apex Roadside
+        resortInfo: {
+            verticalDrop: 610,
+            skiableAcres: 1120,
+            lifts: 4,
+            trails: 82,
+            website: 'https://www.apexresort.com',
+            description: 'Family-friendly resort with consistent snowfall'
+        }
+    },
+    {
+        name: 'Powder King',
+        displayName: 'Powder King Mountain Resort',
+        type: locationTypes.RESORT,
+        coordinates: { lat: 55.4167, lon: -122.6667 },
+        elevation: { base: 1524, summit: 2267 },
+        avalancheZone: 'North Rockies',
+        nearestWeatherStation: 8, // Kakwa
+        resortInfo: {
+            verticalDrop: 610,
+            skiableAcres: 1500,
+            lifts: 3,
+            trails: 35,
+            website: 'https://www.powderking.com',
+            description: 'Deep powder and remote northern BC skiing'
+        }
+    },
+    {
+        name: 'Hudson Bay Mountain',
+        displayName: 'Hudson Bay Mountain (Smithers)',
+        type: locationTypes.RESORT,
+        coordinates: { lat: 54.7833, lon: -127.3167 },
+        elevation: { base: 1066, summit: 1981 },
+        avalancheZone: 'Northwest',
+        nearestWeatherStation: 85, // Telkwa
+        resortInfo: {
+            verticalDrop: 915,
+            skiableAcres: 1750,
+            lifts: 3,
+            trails: 30,
+            website: 'https://www.hudsonbaymountain.com',
+            description: 'Northern BC resort with stunning views'
+        }
+    },
+    {
+        name: 'Shames Mountain',
+        displayName: 'Shames Mountain',
+        type: locationTypes.RESORT,
+        coordinates: { lat: 54.4167, lon: -128.6667 },
+        elevation: { base: 579, summit: 1220 },
+        avalancheZone: 'Northwest',
+        nearestWeatherStation: 7, // Hankin-Evelyn
+        resortInfo: {
+            verticalDrop: 488,
+            skiableAcres: 400,
+            lifts: 2,
+            trails: 32,
+            website: 'https://www.shamesmountain.com',
+            description: 'Coastal powder near Terrace'
+        }
+    },
+
+    // Additional Backcountry Huts
+    {
+        name: 'Kokanee Glacier Cabin',
+        displayName: 'Kokanee Glacier Cabin',
+        type: locationTypes.BACKCOUNTRY,
+        coordinates: { lat: 49.7333, lon: -117.1167 },
+        elevation: { base: 1920, summit: 2500 },
+        avalancheZone: 'Kootenay Boundary',
+        nearestWeatherStation: 41, // Kootenay Pass
+        backcountryInfo: {
+            difficulty: 'Intermediate to Advanced',
+            access: 'Gibson Lake trailhead',
+            permits: 'Hut booking required',
+            description: 'ACC hut with glacier skiing and alpine touring'
+        }
+    },
+    {
+        name: 'Slocan Chief Cabin',
+        displayName: 'Slocan Chief Cabin',
+        type: locationTypes.BACKCOUNTRY,
+        coordinates: { lat: 49.8167, lon: -117.3667 },
+        elevation: { base: 2000, summit: 2600 },
+        avalancheZone: 'Kootenay Boundary',
+        nearestWeatherStation: 41, // Kootenay Pass
+        backcountryInfo: {
+            difficulty: 'Advanced',
+            access: 'Slocan Valley',
+            permits: 'Hut booking required',
+            description: 'ACC hut in Valhalla Provincial Park area'
+        }
+    },
+    {
+        name: 'Valhalla Hut',
+        displayName: 'Valhalla Hut',
+        type: locationTypes.BACKCOUNTRY,
+        coordinates: { lat: 49.8667, lon: -117.4333 },
+        elevation: { base: 2100, summit: 2700 },
+        avalancheZone: 'Kootenay Boundary',
+        nearestWeatherStation: 41, // Kootenay Pass
+        backcountryInfo: {
+            difficulty: 'Advanced',
+            access: 'Slocan Valley',
+            permits: 'Hut booking required',
+            description: 'Remote hut in stunning Valhalla Provincial Park'
+        }
+    },
+    {
+        name: 'Asulkan Cabin',
+        displayName: 'Asulkan Cabin (Rogers Pass)',
+        type: locationTypes.BACKCOUNTRY,
+        coordinates: { lat: 51.2667, lon: -117.5167 },
+        elevation: { base: 1950, summit: 2800 },
+        avalancheZone: 'Glacier National Park',
+        nearestWeatherStation: 62, // Gamma
+        backcountryInfo: {
+            difficulty: 'Advanced',
+            access: 'Rogers Pass via Illecillewaet campground',
+            permits: 'Required - Parks Canada',
+            description: 'Classic ACC hut with world-class ski mountaineering'
+        }
+    },
+    {
+        name: 'Wheeler Hut',
+        displayName: 'Wheeler Hut',
+        type: locationTypes.BACKCOUNTRY,
+        coordinates: { lat: 51.2833, lon: -117.4833 },
+        elevation: { base: 2000, summit: 2800 },
+        avalancheZone: 'Glacier National Park',
+        nearestWeatherStation: 62, // Gamma
+        backcountryInfo: {
+            difficulty: 'Advanced',
+            access: 'Rogers Pass',
+            permits: 'Required - Parks Canada',
+            description: 'ACC hut with access to Hermit Range skiing'
+        }
+    },
+
+    // Additional Backcountry Zones
+    {
+        name: 'Retallack',
+        displayName: 'Retallack Lodge Area',
+        type: locationTypes.BACKCOUNTRY,
+        coordinates: { lat: 49.9167, lon: -117.1833 },
+        elevation: { base: 1400, summit: 2400 },
+        avalancheZone: 'Kootenay Boundary',
+        nearestWeatherStation: 26, // Lardeau
+        backcountryInfo: {
+            difficulty: 'Intermediate to Advanced',
+            access: 'Cat skiing operation',
+            permits: 'Booking required',
+            description: 'Premier cat skiing in West Kootenays'
+        }
+    },
+    {
+        name: 'Baldface',
+        displayName: 'Baldface Lodge Area',
+        type: locationTypes.BACKCOUNTRY,
+        coordinates: { lat: 49.2833, lon: -117.2167 },
+        elevation: { base: 1600, summit: 2600 },
+        avalancheZone: 'Kootenay Boundary',
+        nearestWeatherStation: 41, // Kootenay Pass
+        backcountryInfo: {
+            difficulty: 'Advanced',
+            access: 'Cat skiing operation',
+            permits: 'Booking required',
+            description: 'World-renowned cat skiing with deep powder'
+        }
+    },
+    {
+        name: 'Valhalla Provincial Park',
+        displayName: 'Valhalla Provincial Park',
+        type: locationTypes.BACKCOUNTRY,
+        coordinates: { lat: 49.9000, lon: -117.4500 },
+        elevation: { base: 1200, summit: 2800 },
+        avalancheZone: 'Kootenay Boundary',
+        nearestWeatherStation: 41, // Kootenay Pass
+        backcountryInfo: {
+            difficulty: 'Advanced',
+            access: 'Various trailheads from Slocan Valley',
+            permits: 'BC Parks permit required',
+            description: 'Pristine wilderness with alpine skiing'
+        }
+    },
+    {
+        name: 'Monashee Mountains',
+        displayName: 'Monashee Mountains',
+        type: locationTypes.BACKCOUNTRY,
+        coordinates: { lat: 50.5000, lon: -118.5000 },
+        elevation: { base: 1500, summit: 2800 },
+        avalancheZone: 'South Columbia',
+        nearestWeatherStation: 29, // Black Wall
+        backcountryInfo: {
+            difficulty: 'Advanced',
+            access: 'Various access points',
+            permits: 'Varies by area',
+            description: 'Deep interior powder and remote terrain'
+        }
+    },
+    {
+        name: 'Cariboo Mountains',
+        displayName: 'Cariboo Mountains',
+        type: locationTypes.BACKCOUNTRY,
+        coordinates: { lat: 52.7500, lon: -120.0000 },
+        elevation: { base: 1600, summit: 2900 },
+        avalancheZone: 'Cariboo',
+        nearestWeatherStation: 6, // Lucille
+        backcountryInfo: {
+            difficulty: 'Advanced',
+            access: 'Remote access via helicopter or snowmobile',
+            permits: 'Varies by area',
+            description: 'Remote northern BC mountains with deep snowpack'
+        }
+    },
+    {
+        name: 'Selkirk Mountains',
+        displayName: 'Selkirk Mountains',
+        type: locationTypes.BACKCOUNTRY,
+        coordinates: { lat: 50.8000, lon: -117.5000 },
+        elevation: { base: 1500, summit: 3000 },
+        avalancheZone: 'North Columbia',
+        nearestWeatherStation: 90, // Core Lodge
+        backcountryInfo: {
+            difficulty: 'Advanced',
+            access: 'Various access points',
+            permits: 'Varies by area',
+            description: 'Classic BC interior range with deep snow'
+        }
+    },
+    {
+        name: 'Purcell Mountains',
+        displayName: 'Purcell Mountains',
+        type: locationTypes.BACKCOUNTRY,
+        coordinates: { lat: 50.5000, lon: -116.5000 },
+        elevation: { base: 1400, summit: 3000 },
+        avalancheZone: 'Purcell',
+        nearestWeatherStation: 28, // Kicking Horse
+        backcountryInfo: {
+            difficulty: 'Advanced',
+            access: 'Various access points',
+            permits: 'Varies by area',
+            description: 'Extensive range with varied terrain'
+        }
     }
 ];
 
