@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { Card, Badge, Spinner, Form } from 'react-bootstrap';
 import { MapPin, Layers, AlertTriangle } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMap, LayersControl } from 'react-leaflet';
@@ -6,7 +6,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './MapCard.css';
 import { getAvalancheForecastAreas, getAvalancheForecastProducts, parseDangerRating } from '../services/avalancheApi';
-import { getDriveBCEvents, parseEventType, parseSeverity, getRoadNames } from '../services/mapApi';
+import { getDriveBCEvents, parseEventType, parseSeverity, getRoadNames, prioritizeEvents } from '../services/mapApi';
 
 // Fix for default marker icons in bundlers
 delete L.Icon.Default.prototype._getIconUrl;
@@ -29,7 +29,7 @@ const MapUpdater = ({ center }) => {
     return null;
 };
 
-// Create custom icon for road events
+// Create custom icon for road events - Moved outside component to prevent recreation
 const createEventIcon = (eventType) => {
     const typeInfo = parseEventType(eventType);
 
@@ -57,6 +57,16 @@ const createEventIcon = (eventType) => {
     });
 };
 
+// Icon cache to prevent recreation - MEMORY LEAK FIX
+const eventIconCache = new Map();
+
+const getEventIcon = (eventType) => {
+    if (!eventIconCache.has(eventType)) {
+        eventIconCache.set(eventType, createEventIcon(eventType));
+    }
+    return eventIconCache.get(eventType);
+};
+
 const MapCard = ({ location, coordinates, avalancheForecast }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [avalancheAreas, setAvalancheAreas] = useState(null);
@@ -67,32 +77,37 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
     const mapRef = useRef(null);
 
     // Default to Whistler if no coordinates provided
-    const center = coordinates
+    const center = useMemo(() => coordinates
         ? [coordinates.lat, coordinates.lon]
-        : [50.1163, -122.9574];
+        : [50.1163, -122.9574], [coordinates]);
 
     const locationName = location?.displayName || location?.name || 'Current Location';
 
     // Fetch avalanche forecast areas
     useEffect(() => {
+        let isMounted = true;
         const fetchAvalancheData = async () => {
             try {
                 const [areas, products] = await Promise.all([
                     getAvalancheForecastAreas(),
                     getAvalancheForecastProducts()
                 ]);
-                setAvalancheAreas(areas);
-                setAvalancheProducts(products);
+                if (isMounted) {
+                    setAvalancheAreas(areas);
+                    setAvalancheProducts(products);
+                }
             } catch (error) {
                 console.error('Failed to fetch avalanche data:', error);
             }
         };
 
         fetchAvalancheData();
+        return () => { isMounted = false; };
     }, []);
 
-    // Fetch DriveBC road events
+    // Fetch DriveBC road events - MEMORY LEAK FIX: Reduced frequency and event count
     useEffect(() => {
+        let isMounted = true;
         const fetchRoadEvents = async () => {
             try {
                 // Fetch events within BC region (approximate bounds)
@@ -103,16 +118,23 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                     west: -139
                 };
                 const events = await getDriveBCEvents(bounds);
-                setDriveBCEvents(events);
+                if (isMounted) {
+                    // Prioritize and limit to 50 most severe events to reduce memory usage
+                    const prioritized = prioritizeEvents(events, 50);
+                    setDriveBCEvents(prioritized);
+                }
             } catch (error) {
                 console.error('Failed to fetch DriveBC events:', error);
             }
         };
 
         fetchRoadEvents();
-        // Refresh events every 5 minutes
-        const interval = setInterval(fetchRoadEvents, 5 * 60 * 1000);
-        return () => clearInterval(interval);
+        // Refresh events every 10 minutes (reduced from 5 to minimize memory churn)
+        const interval = setInterval(fetchRoadEvents, 10 * 60 * 1000);
+        return () => {
+            clearInterval(interval);
+            isMounted = false;
+        };
     }, []);
 
     useEffect(() => {
@@ -121,8 +143,11 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
         return () => clearTimeout(timer);
     }, []);
 
-    // Get danger rating for an area
-    const getDangerRatingForArea = (areaId) => {
+    // Get danger rating for an area - Memoized via useCallback isn't strictly necessary for this helper,
+    // but good if passed down. Since it's used in render props, we'll keep it simple or wrap if needed.
+    // For now, it's used inside other callbacks.
+
+    const getDangerRatingForArea = useCallback((areaId) => {
         if (!avalancheProducts) return null;
 
         const product = avalancheProducts.find(p => p.area?.id === areaId);
@@ -131,10 +156,10 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
         // Get alpine rating as the primary indicator
         const alpineRating = product.report.dangerRatings[0].ratings?.alp?.rating?.value;
         return parseDangerRating(alpineRating);
-    };
+    }, [avalancheProducts]);
 
-    // Style function for avalanche polygons
-    const avalancheStyle = (feature) => {
+    // Style function for avalanche polygons - Memoized
+    const avalancheStyle = useCallback((feature) => {
         const areaId = feature.id;
         const rating = getDangerRatingForArea(areaId);
 
@@ -145,10 +170,10 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
             color: 'white',
             fillOpacity: 0.3
         };
-    };
+    }, [getDangerRatingForArea]);
 
-    // Popup content for avalanche areas
-    const onEachAvalancheFeature = (feature, layer) => {
+    // Popup content for avalanche areas - Memoized - MEMORY LEAK FIX: Added cleanup
+    const onEachAvalancheFeature = useCallback((feature, layer) => {
         const areaId = feature.id;
         const areaName = feature.properties?.name || 'Unknown Area';
         const rating = getDangerRatingForArea(areaId);
@@ -166,24 +191,116 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
             layer.bindPopup(popupContent);
         }
 
-        // Highlight on hover
+        // Highlight on hover - with proper cleanup
+        const handleMouseOver = (e) => {
+            const layer = e.target;
+            layer.setStyle({
+                weight: 3,
+                fillOpacity: 0.5
+            });
+        };
+
+        const handleMouseOut = (e) => {
+            const layer = e.target;
+            layer.setStyle({
+                weight: 2,
+                fillOpacity: 0.3
+            });
+        };
+
         layer.on({
-            mouseover: (e) => {
-                const layer = e.target;
-                layer.setStyle({
-                    weight: 3,
-                    fillOpacity: 0.5
-                });
-            },
-            mouseout: (e) => {
-                const layer = e.target;
-                layer.setStyle({
-                    weight: 2,
-                    fillOpacity: 0.3
-                });
-            }
+            mouseover: handleMouseOver,
+            mouseout: handleMouseOut
         });
-    };
+
+        // Clean up event listeners when layer is removed
+        layer.on('remove', () => {
+            layer.off('mouseover', handleMouseOver);
+            layer.off('mouseout', handleMouseOut);
+        });
+    }, [getDangerRatingForArea]);
+
+    // Memoize DriveBC markers to prevent re-rendering - MEMORY LEAK FIX: Use cached icons
+    const driveBCMarkers = useMemo(() => {
+        if (!showRoadEventsLayer) return null;
+
+        const markers = [];
+
+        // Render DriveBC road events
+        const eventMarkers = driveBCEvents.map((event, idx) => {
+            // Only show events with valid coordinates
+            if (!event.geography || !event.geography.coordinates) return null;
+
+            // Parse coordinates - API sometimes returns strings instead of numbers
+            const [lon, lat] = event.geography.coordinates;
+            const parsedLat = typeof lat === 'string' ? parseFloat(lat) : lat;
+            const parsedLon = typeof lon === 'string' ? parseFloat(lon) : lon;
+
+            // Validate coordinates are valid numbers
+            if (typeof parsedLat !== 'number' || typeof parsedLon !== 'number' ||
+                isNaN(parsedLat) || isNaN(parsedLon)) {
+                return null;
+            }
+
+            const eventType = event.event_type || 'INCIDENT';
+            const typeInfo = parseEventType(eventType);
+            const severityInfo = parseSeverity(event.severity);
+            const roadNames = getRoadNames(event);
+
+            return (
+                <Marker
+                    key={`event-${event.id || idx}`}
+                    position={[parsedLat, parsedLon]}
+                    icon={getEventIcon(eventType)}
+                >
+                    <Popup>
+                        <div style={{ minWidth: '200px' }}>
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                marginBottom: '8px'
+                            }}>
+                                <span style={{ fontSize: '20px' }}>{typeInfo.icon}</span>
+                                <strong style={{ color: '#333' }}>{typeInfo.label}</strong>
+                            </div>
+
+                            <div style={{
+                                padding: '6px 10px',
+                                backgroundColor: severityInfo.color,
+                                color: 'white',
+                                borderRadius: '4px',
+                                marginBottom: '8px',
+                                fontSize: '12px',
+                                fontWeight: 'bold'
+                            }}>
+                                {severityInfo.label} Severity
+                            </div>
+
+                            <div style={{ marginBottom: '8px' }}>
+                                <strong style={{ color: '#666', fontSize: '12px' }}>Road:</strong>
+                                <div style={{ color: '#333' }}>{roadNames}</div>
+                            </div>
+
+                            {event.headline && (
+                                <div style={{
+                                    color: '#555',
+                                    fontSize: '13px',
+                                    borderTop: '1px solid #eee',
+                                    paddingTop: '8px',
+                                    marginTop: '8px'
+                                }}>
+                                    {event.headline}
+                                </div>
+                            )}
+                        </div>
+                    </Popup>
+                </Marker>
+            );
+        });
+
+        return eventMarkers.filter(m => m !== null);
+    }, [driveBCEvents, showRoadEventsLayer]);
 
     return (
         <Card className="glass-card border-0 text-white shadow-lg hover-scale transition-all">
@@ -244,9 +361,10 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                         />
 
-                        {/* Avalanche forecast areas */}
+                        {/* Avalanche forecast areas - MEMORY LEAK FIX: Added key prop */}
                         {showAvalancheLayer && avalancheAreas && (
                             <GeoJSON
+                                key="avalanche-areas"
                                 data={avalancheAreas}
                                 style={avalancheStyle}
                                 onEachFeature={onEachAvalancheFeature}
@@ -254,67 +372,7 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                         )}
 
                         {/* DriveBC road events */}
-                        {showRoadEventsLayer && driveBCEvents.map((event, idx) => {
-                            // Only show events with valid coordinates
-                            if (!event.geography || !event.geography.coordinates) return null;
-
-                            const [lon, lat] = event.geography.coordinates;
-                            const eventType = event.event_type || 'INCIDENT';
-                            const typeInfo = parseEventType(eventType);
-                            const severityInfo = parseSeverity(event.severity);
-                            const roadNames = getRoadNames(event);
-
-                            return (
-                                <Marker
-                                    key={`event-${idx}`}
-                                    position={[lat, lon]}
-                                    icon={createEventIcon(eventType)}
-                                >
-                                    <Popup>
-                                        <div style={{ minWidth: '200px' }}>
-                                            <div style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '8px',
-                                                marginBottom: '8px'
-                                            }}>
-                                                <span style={{ fontSize: '20px' }}>{typeInfo.icon}</span>
-                                                <strong style={{ color: '#333' }}>{typeInfo.label}</strong>
-                                            </div>
-
-                                            <div style={{
-                                                padding: '6px 10px',
-                                                backgroundColor: severityInfo.color,
-                                                color: 'white',
-                                                borderRadius: '4px',
-                                                marginBottom: '8px',
-                                                fontSize: '12px',
-                                                fontWeight: 'bold'
-                                            }}>
-                                                {severityInfo.label} Severity
-                                            </div>
-
-                                            <div style={{ marginBottom: '8px' }}>
-                                                <strong style={{ color: '#666', fontSize: '12px' }}>Road:</strong>
-                                                <div style={{ color: '#333' }}>{roadNames}</div>
-                                            </div>
-
-                                            {event.headline && (
-                                                <div style={{
-                                                    color: '#555',
-                                                    fontSize: '13px',
-                                                    borderTop: '1px solid #eee',
-                                                    paddingTop: '8px',
-                                                    marginTop: '8px'
-                                                }}>
-                                                    {event.headline}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </Popup>
-                                </Marker>
-                            );
-                        })}
+                        {driveBCMarkers}
 
                         {/* Current location marker */}
                         <Marker position={center}>
@@ -323,7 +381,7 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                                     <strong>{locationName}</strong>
                                     <br />
                                     <small>
-                                        {coordinates?.lat.toFixed(4)}, {coordinates?.lon.toFixed(4)}
+                                        {center[0].toFixed(4)}, {center[1].toFixed(4)}
                                     </small>
                                 </div>
                             </Popup>

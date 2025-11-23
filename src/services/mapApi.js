@@ -133,3 +133,21 @@ export const getRoadNames = (event) => {
         .filter((name, index, self) => self.indexOf(name) === index) // Remove duplicates
         .join(', ');
 };
+
+/**
+ * Prioritize events by severity and limit results
+ * @param {Array} events - Array of events
+ * @param {number} limit - Maximum number of events to return
+ * @returns {Array} Prioritized and limited events
+ */
+export const prioritizeEvents = (events, limit = 50) => {
+    if (!events || events.length === 0) return [];
+
+    return events
+        .sort((a, b) => {
+            const severityA = parseSeverity(a.severity).priority;
+            const severityB = parseSeverity(b.severity).priority;
+            return severityB - severityA; // Higher priority first
+        })
+        .slice(0, limit);
+};
