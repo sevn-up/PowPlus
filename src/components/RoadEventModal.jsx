@@ -30,6 +30,15 @@ const RoadEventModal = ({ show, onHide, event }) => {
         return `https://www.drivebc.ca/mobile/pub/events/id/${eventId}.html`;
     };
 
+    // Extract Next Update time from description
+    const getNextUpdate = (desc) => {
+        if (!desc) return null;
+        const match = desc.match(/Next update time (.*?)\./);
+        return match ? match[1] : null;
+    };
+
+    const nextUpdate = getNextUpdate(event.description);
+
     return (
         <Modal show={show} onHide={onHide} size="lg" centered className="road-event-modal">
             <Modal.Header closeButton className="bg-dark text-white border-0">
@@ -100,14 +109,14 @@ const RoadEventModal = ({ show, onHide, event }) => {
                             </Card.Body>
                         </Card>
                     </div>
-                    {event.created && (
+                    {nextUpdate && (
                         <div className="col-md-6">
                             <Card className="bg-transparent border-secondary h-100">
                                 <Card.Body className="py-3">
-                                    <small className="text-white-50 d-block mb-1">Created</small>
+                                    <small className="text-white-50 d-block mb-1">Next Update</small>
                                     <div className="d-flex align-items-center gap-2">
-                                        <Calendar size={16} className="text-info" />
-                                        <strong>{formatDate(event.created)}</strong>
+                                        <Calendar size={16} className="text-warning" />
+                                        <strong>{nextUpdate}</strong>
                                     </div>
                                 </Card.Body>
                             </Card>

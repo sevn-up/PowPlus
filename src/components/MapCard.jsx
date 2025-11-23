@@ -6,7 +6,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './MapCard.css';
 import { getAvalancheForecastAreas, getAvalancheForecastProducts, parseDangerRating } from '../services/avalancheApi';
-import { getDriveBCEvents, parseEventType, parseSeverity, getRoadNames, prioritizeEvents } from '../services/mapApi';
+import { getDriveBCEvents, parseEventType, parseSeverity, getRoadNames, prioritizeEvents, getNextUpdate } from '../services/mapApi';
 import { getTerrainLayerConfig } from '../services/terrainLayers';
 import RoadEventModal from './RoadEventModal';
 
@@ -275,8 +275,18 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
             // Only show events with valid coordinates
             if (!event.geography || !event.geography.coordinates) return null;
 
-            // Parse coordinates - API sometimes returns strings instead of numbers
-            const [lon, lat] = event.geography.coordinates;
+            // Handle different geometry types (Point vs LineString)
+            let lon, lat;
+            if (event.geography.type === 'LineString') {
+                // For LineString, use the middle point or first point
+                const coords = event.geography.coordinates;
+                const midIndex = Math.floor(coords.length / 2);
+                [lon, lat] = coords[midIndex] || coords[0];
+            } else {
+                // Default to Point
+                [lon, lat] = event.geography.coordinates;
+            }
+
             const parsedLat = typeof lat === 'string' ? parseFloat(lat) : lat;
             const parsedLon = typeof lon === 'string' ? parseFloat(lon) : lon;
 
@@ -290,6 +300,7 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
             const typeInfo = parseEventType(eventType);
             const severityInfo = parseSeverity(event.severity);
             const roadNames = getRoadNames(event);
+            const nextUpdate = getNextUpdate(event.description);
 
             return (
                 <Marker
@@ -333,17 +344,33 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                                 <div style={{ color: '#f5f5f5', fontSize: '13px', fontWeight: '500' }}>{roadNames}</div>
                             </div>
 
-                            {event.headline && (
+                            <div style={{
+                                color: '#f0f0f0',
+                                fontSize: '12px',
+                                backgroundColor: 'rgba(255,255,255,0.1)',
+                                padding: '8px',
+                                borderRadius: '4px',
+                                marginBottom: '8px',
+                                lineHeight: '1.4'
+                            }}>
+                                {event.description ? (
+                                    event.description.length > 120
+                                        ? `${event.description.substring(0, 120)}...`
+                                        : event.description
+                                ) : event.headline}
+                            </div>
+
+                            {nextUpdate && (
                                 <div style={{
-                                    color: '#f0f0f0',
-                                    fontSize: '12px',
-                                    backgroundColor: 'rgba(255,255,255,0.1)',
-                                    padding: '8px',
-                                    borderRadius: '4px',
+                                    fontSize: '11px',
+                                    color: '#FFC107',
                                     marginBottom: '8px',
-                                    lineHeight: '1.4'
+                                    fontWeight: '500',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
                                 }}>
-                                    {event.headline}
+                                    📅 Next Update: {nextUpdate}
                                 </div>
                             )}
 

@@ -135,19 +135,123 @@ export const getRoadNames = (event) => {
 };
 
 /**
- * Prioritize events by severity and limit results
+ * Extract Next Update time from event description
+ * @param {string} description - Event description
+ * @returns {string|null} Next update time or null
+ */
+export const getNextUpdate = (description) => {
+    if (!description) return null;
+    const match = description.match(/Next update time (.*?)\./);
+    return match ? match[1] : null;
+};
+
+/**
+ * Prioritize events by severity and relevance to skiing (Key Routes)
  * @param {Array} events - Array of events
  * @param {number} limit - Maximum number of events to return
  * @returns {Array} Prioritized and limited events
  */
-export const prioritizeEvents = (events, limit = 50) => {
+export const prioritizeEvents = (events, limit = 75) => {
     if (!events || events.length === 0) return [];
 
+    // Key Ski Highways
+    const KEY_ROUTES = [
+        'Highway 99', // Sea-to-Sky
+        'Highway 1',  // TransCanada
+        'Highway 3',  // Crowsnest
+        'Highway 5',  // Coquihalla
+        'Highway 97'  // Okanagan
+    ];
+
+    // Helper to check if event is on a key route
+    const isKeyRoute = (event) => {
+        if (!event.roads) return false;
+        return event.roads.some(road =>
+            KEY_ROUTES.some(keyRoute => road.name && road.name.includes(keyRoute))
+        );
+    };
+
+    // Helper to check if event is relevant
+    const isRelevant = (event) => {
+        const severity = parseSeverity(event.severity).priority;
+        const type = event.event_type;
+        const desc = event.description ? event.description.toLowerCase() : '';
+
+        // STALE DATA CHECK:
+        // If event hasn't been updated in 30 days, hide it to avoid "July construction" in November.
+        // EXCEPTIONS: Major Incidents (might be long term closures) or Road Conditions (seasonal).
+        const daysSinceUpdate = (new Date() - new Date(event.updated)) / (1000 * 60 * 60 * 24);
+        if (daysSinceUpdate > 30 && severity < 3 && type !== 'ROAD_CONDITION') {
+            return false;
+        }
+
+        // 1. ALWAYS SHOW: 
+        // - Major incidents (accidents, closures)
+        // - Weather conditions (snow, ice, fog)
+        // - High Severity events
+        if (type === 'INCIDENT' ||
+            type === 'WEATHER_CONDITION' ||
+            severity >= 3) return true;
+
+        // 2. ROAD CONDITIONS:
+        // - Only show if on a Key Route (e.g. Compact Snow on Hwy 5)
+        // - Filter out minor side roads (e.g. Nazko Rd)
+        if (type === 'ROAD_CONDITION') {
+            return isKeyRoute(event);
+        }
+
+        // 2. CONSTRUCTION: Be stricter. 
+        // - Hide if description says "no delay" or "minor delay" (unless Major severity)
+        // - Hide if description says "work on shoulders" (usually irrelevant)
+        // - Only show if it involves a closure, single lane, or major delay AND is on a Key Route
+        if (type === 'CONSTRUCTION') {
+            if (severity >= 3) return true;
+
+            // Explicitly exclude "no delay" or minor impact events
+            if (desc.includes('no delay') ||
+                desc.includes('expect minor delays') ||
+                desc.includes('work on shoulders')) return false;
+
+            const hasImpact = desc.includes('closed') ||
+                desc.includes('closure') ||
+                desc.includes('single lane') ||
+                desc.includes('major delay') ||
+                desc.includes('delays'); // General delays, but filtered by "minor" check above
+
+            return isKeyRoute(event) && hasImpact;
+        }
+
+        // 3. Default: Hide minor events even on key routes to reduce noise
+        return false;
+    };
+
     return events
+        .filter(isRelevant) // Filter out irrelevant minor events
         .sort((a, b) => {
+            // 1. Sort by Severity (Highest first)
             const severityA = parseSeverity(a.severity).priority;
             const severityB = parseSeverity(b.severity).priority;
-            return severityB - severityA; // Higher priority first
+            if (severityB !== severityA) return severityB - severityA;
+
+            // 2. Sort by Type (Incidents/Weather/Road Conditions > Construction)
+            const getTypePriority = (type) => {
+                if (type === 'INCIDENT') return 4;
+                if (type === 'WEATHER_CONDITION') return 3;
+                if (type === 'ROAD_CONDITION') return 3;
+                if (type === 'CONSTRUCTION') return 1;
+                return 2;
+            };
+            const typeA = getTypePriority(a.event_type);
+            const typeB = getTypePriority(b.event_type);
+            if (typeB !== typeA) return typeB - typeA;
+
+            // 3. Sort by Key Route (Key routes first)
+            const keyA = isKeyRoute(a) ? 1 : 0;
+            const keyB = isKeyRoute(b) ? 1 : 0;
+            if (keyB !== keyA) return keyB - keyA;
+
+            // 4. Sort by Update Time (Newest first)
+            return new Date(b.updated) - new Date(a.updated);
         })
         .slice(0, limit);
 };
