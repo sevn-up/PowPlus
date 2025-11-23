@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { Card, Badge, Spinner, Form } from 'react-bootstrap';
-import { MapPin, Layers, AlertTriangle } from 'lucide-react';
+import { MapPin, Layers, AlertTriangle, Mountain } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMap, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './MapCard.css';
 import { getAvalancheForecastAreas, getAvalancheForecastProducts, parseDangerRating } from '../services/avalancheApi';
 import { getDriveBCEvents, parseEventType, parseSeverity, getRoadNames, prioritizeEvents } from '../services/mapApi';
+import { getTerrainLayerConfig } from '../services/terrainLayers';
 
 // Fix for default marker icons in bundlers
 delete L.Icon.Default.prototype._getIconUrl;
@@ -74,6 +75,7 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
     const [showAvalancheLayer, setShowAvalancheLayer] = useState(true);
     const [driveBCEvents, setDriveBCEvents] = useState([]);
     const [showRoadEventsLayer, setShowRoadEventsLayer] = useState(true);
+    const [showTerrainLayer, setShowTerrainLayer] = useState(false);
     const mapRef = useRef(null);
 
     // Default to Whistler if no coordinates provided
@@ -176,16 +178,55 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
     const onEachAvalancheFeature = useCallback((feature, layer) => {
         const areaId = feature.id;
         const areaName = feature.properties?.name || 'Unknown Area';
-        const rating = getDangerRatingForArea(areaId);
 
-        if (rating) {
+        // Get the full product for this area to access all danger ratings
+        const product = avalancheProducts?.find(p => p.area?.id === areaId);
+        const dangerRatings = product?.report?.dangerRatings?.[0]?.ratings;
+
+        if (dangerRatings) {
+            const alpineRating = parseDangerRating(dangerRatings.alp?.rating?.value);
+            const treelineRating = parseDangerRating(dangerRatings.tln?.rating?.value);
+            const belowTreelineRating = parseDangerRating(dangerRatings.btl?.rating?.value);
+
             const popupContent = `
-                <div style="min-width: 200px;">
-                    <strong style="font-size: 14px;">${areaName}</strong><br/>
-                    <div style="margin-top: 8px; padding: 8px; background-color: ${rating.color}; color: ${rating.textColor}; border-radius: 4px; text-align: center;">
-                        <strong>Alpine: ${rating.display}</strong>
+                <div style="min-width: 250px; font-family: system-ui, -apple-system, sans-serif;">
+                    <strong style="font-size: 16px; color: #333; display: block; margin-bottom: 12px;">${areaName}</strong>
+                    
+                    <div style="margin-bottom: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <span style="font-size: 12px; color: #666; font-weight: 500;">Alpine</span>
+                            <span style="font-size: 11px; color: #999;">2500m+</span>
+                        </div>
+                        <div style="padding: 6px 10px; background-color: ${alpineRating.color}; color: ${alpineRating.textColor}; border-radius: 4px; text-align: center; font-weight: bold; font-size: 13px;">
+                            ${alpineRating.display}
+                        </div>
                     </div>
-                    <small style="color: #666; margin-top: 4px; display: block;">Click avalanche card for full details</small>
+                    
+                    <div style="margin-bottom: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <span style="font-size: 12px; color: #666; font-weight: 500;">Treeline</span>
+                            <span style="font-size: 11px; color: #999;">1500-2500m</span>
+                        </div>
+                        <div style="padding: 6px 10px; background-color: ${treelineRating.color}; color: ${treelineRating.textColor}; border-radius: 4px; text-align: center; font-weight: bold; font-size: 13px;">
+                            ${treelineRating.display}
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <span style="font-size: 12px; color: #666; font-weight: 500;">Below Treeline</span>
+                            <span style="font-size: 11px; color: #999;">&lt;1500m</span>
+                        </div>
+                        <div style="padding: 6px 10px; background-color: ${belowTreelineRating.color}; color: ${belowTreelineRating.textColor}; border-radius: 4px; text-align: center; font-weight: bold; font-size: 13px;">
+                            ${belowTreelineRating.display}
+                        </div>
+                    </div>
+                    
+                    <div style="border-top: 1px solid #e0e0e0; padding-top: 8px; margin-top: 8px;">
+                        <small style="color: #666; font-size: 11px; display: block; text-align: center;">
+                            📊 Click avalanche card for full forecast details
+                        </small>
+                    </div>
                 </div>
             `;
             layer.bindPopup(popupContent);
@@ -218,7 +259,7 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
             layer.off('mouseover', handleMouseOver);
             layer.off('mouseout', handleMouseOut);
         });
-    }, [getDangerRatingForArea]);
+    }, [avalancheProducts]);
 
     // Memoize DriveBC markers to prevent re-rendering - MEMORY LEAK FIX: Use cached icons
     const driveBCMarkers = useMemo(() => {
@@ -254,43 +295,70 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                     icon={getEventIcon(eventType)}
                 >
                     <Popup>
-                        <div style={{ minWidth: '200px' }}>
+                        <div style={{ minWidth: '240px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
                             <div style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '8px',
-                                marginBottom: '8px'
+                                gap: '10px',
+                                marginBottom: '10px',
+                                paddingBottom: '8px',
+                                borderBottom: `3px solid ${typeInfo.color}`
                             }}>
-                                <span style={{ fontSize: '20px' }}>{typeInfo.icon}</span>
-                                <strong style={{ color: '#333' }}>{typeInfo.label}</strong>
+                                <span style={{ fontSize: '24px' }}>{typeInfo.icon}</span>
+                                <div>
+                                    <strong style={{ color: '#333', fontSize: '15px', display: 'block' }}>{typeInfo.label}</strong>
+                                    <span style={{ fontSize: '11px', color: '#999' }}>Road Event</span>
+                                </div>
                             </div>
 
                             <div style={{
-                                padding: '6px 10px',
+                                padding: '8px 12px',
                                 backgroundColor: severityInfo.color,
                                 color: 'white',
-                                borderRadius: '4px',
-                                marginBottom: '8px',
-                                fontSize: '12px',
-                                fontWeight: 'bold'
+                                borderRadius: '6px',
+                                marginBottom: '10px',
+                                fontSize: '13px',
+                                fontWeight: 'bold',
+                                textAlign: 'center',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                             }}>
                                 {severityInfo.label} Severity
                             </div>
 
-                            <div style={{ marginBottom: '8px' }}>
-                                <strong style={{ color: '#666', fontSize: '12px' }}>Road:</strong>
-                                <div style={{ color: '#333' }}>{roadNames}</div>
+                            <div style={{ marginBottom: '10px' }}>
+                                <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px', textTransform: 'uppercase', fontWeight: '600' }}>Location</div>
+                                <div style={{ color: '#333', fontSize: '13px', fontWeight: '500' }}>{roadNames}</div>
                             </div>
 
                             {event.headline && (
                                 <div style={{
                                     color: '#555',
-                                    fontSize: '13px',
-                                    borderTop: '1px solid #eee',
-                                    paddingTop: '8px',
-                                    marginTop: '8px'
+                                    fontSize: '12px',
+                                    backgroundColor: '#f8f9fa',
+                                    padding: '8px',
+                                    borderRadius: '4px',
+                                    marginBottom: '8px',
+                                    lineHeight: '1.4'
                                 }}>
                                     {event.headline}
+                                </div>
+                            )}
+
+                            {event.updated && (
+                                <div style={{
+                                    fontSize: '10px',
+                                    color: '#999',
+                                    textAlign: 'right',
+                                    marginTop: '8px',
+                                    paddingTop: '8px',
+                                    borderTop: '1px solid #e0e0e0'
+                                }}>
+                                    🕐 Updated: {new Date(event.updated).toLocaleString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: 'numeric',
+                                        minute: '2-digit'
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -335,6 +403,19 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                             onChange={(e) => setShowRoadEventsLayer(e.target.checked)}
                             className="text-white"
                         />
+                        <Form.Check
+                            type="switch"
+                            id="terrain-layer-toggle"
+                            label={
+                                <span className="d-flex align-items-center gap-1 small text-white">
+                                    <Mountain size={12} />
+                                    Terrain
+                                </span>
+                            }
+                            checked={showTerrainLayer}
+                            onChange={(e) => setShowTerrainLayer(e.target.checked)}
+                            className="text-white"
+                        />
                         <Badge bg="secondary" className="d-flex align-items-center gap-1">
                             <Layers size={12} />
                             OpenStreetMap
@@ -361,6 +442,16 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                         />
 
+                        {/* Terrain overlay layer */}
+                        {showTerrainLayer && (
+                            <TileLayer
+                                attribution='Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+                                url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+                                maxZoom={17}
+                                opacity={0.6}
+                            />
+                        )}
+
                         {/* Avalanche forecast areas - MEMORY LEAK FIX: Added key prop */}
                         {showAvalancheLayer && avalancheAreas && (
                             <GeoJSON
@@ -377,12 +468,45 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                         {/* Current location marker */}
                         <Marker position={center}>
                             <Popup>
-                                <div className="text-dark">
-                                    <strong>{locationName}</strong>
-                                    <br />
-                                    <small>
-                                        {center[0].toFixed(4)}, {center[1].toFixed(4)}
-                                    </small>
+                                <div style={{ minWidth: '220px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                                    <div style={{
+                                        marginBottom: '10px',
+                                        paddingBottom: '8px',
+                                        borderBottom: '2px solid #4A90E2'
+                                    }}>
+                                        <strong style={{ fontSize: '16px', color: '#333', display: 'block' }}>{locationName}</strong>
+                                        <span style={{ fontSize: '11px', color: '#999' }}>📍 Selected Location</span>
+                                    </div>
+
+                                    <div style={{ marginBottom: '8px' }}>
+                                        <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px', textTransform: 'uppercase', fontWeight: '600' }}>Coordinates</div>
+                                        <div style={{ fontSize: '12px', color: '#666', fontFamily: 'monospace' }}>
+                                            {center[0].toFixed(4)}°N, {center[1].toFixed(4)}°W
+                                        </div>
+                                    </div>
+
+                                    {location?.elevation && (
+                                        <div style={{ marginBottom: '8px' }}>
+                                            <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px', textTransform: 'uppercase', fontWeight: '600' }}>Elevation</div>
+                                            <div style={{ fontSize: '12px', color: '#666' }}>
+                                                ⛰️ Base: {location.elevation.base}m
+                                                {location.elevation.summit && ` | Summit: ${location.elevation.summit}m`}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {location?.avalancheZone && (
+                                        <div style={{
+                                            marginTop: '10px',
+                                            padding: '6px 10px',
+                                            backgroundColor: '#FFF3E0',
+                                            borderLeft: '3px solid #FF9800',
+                                            borderRadius: '4px'
+                                        }}>
+                                            <div style={{ fontSize: '10px', color: '#E65100', fontWeight: '600', marginBottom: '2px' }}>AVALANCHE ZONE</div>
+                                            <div style={{ fontSize: '12px', color: '#333' }}>{location.avalancheZone}</div>
+                                        </div>
+                                    )}
                                 </div>
                             </Popup>
                         </Marker>
@@ -400,8 +524,8 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                         Lat: {center[0].toFixed(4)}, Lon: {center[1].toFixed(4)}
                     </small>
                 </div>
-            </Card.Body>
-        </Card>
+            </Card.Body >
+        </Card >
     );
 };
 
