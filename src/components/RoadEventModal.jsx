@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal, Button, Badge, Card } from 'react-bootstrap';
-import { AlertTriangle, Clock, MapPin, Calendar, ExternalLink, Construction, Info, Snowflake } from 'lucide-react';
+import { AlertTriangle, Clock, MapPin, Calendar, ExternalLink, Construction, Info, Snowflake, Camera } from 'lucide-react';
 import { parseEventType, parseSeverity } from '../services/mapApi';
 
 const RoadEventModal = ({ show, onHide, event }) => {
@@ -40,13 +40,23 @@ const RoadEventModal = ({ show, onHide, event }) => {
     const nextUpdate = getNextUpdate(event.description);
 
     return (
-        <Modal show={show} onHide={onHide} size="lg" centered className="road-event-modal">
+        <Modal show={show} onHide={onHide} size="xl" centered className="road-event-modal">
             <Modal.Header closeButton className="bg-dark text-white border-0">
-                <Modal.Title className="d-flex align-items-center gap-2">
-                    <span style={{ fontSize: '24px' }}>{typeInfo.icon}</span>
-                    <div>
-                        <div className="fw-bold">{typeInfo.label}</div>
-                        <small className="text-white-50" style={{ fontSize: '14px' }}>{event.headline}</small>
+                <Modal.Title className="d-flex align-items-center gap-3 w-100">
+                    <span style={{ fontSize: '28px' }}>{typeInfo.icon}</span>
+                    <div className="flex-grow-1">
+                        <div className="fw-bold" style={{ fontSize: '20px' }}>{typeInfo.label}</div>
+                        <small
+                            className="fw-semibold"
+                            style={{
+                                fontSize: '12px',
+                                color: typeInfo.color,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.8px'
+                            }}
+                        >
+                            {typeInfo.category || event.event_type}
+                        </small>
                     </div>
                 </Modal.Title>
             </Modal.Header>
@@ -123,6 +133,28 @@ const RoadEventModal = ({ show, onHide, event }) => {
                         </div>
                     )}
                 </div>
+
+                {/* Webcam Section - Placeholder for Future Integration */}
+                <Card className="bg-white bg-opacity-10 border-0 mb-4">
+                    <Card.Body>
+                        <h6 className="text-white-50 mb-3 d-flex align-items-center gap-2">
+                            <Camera size={16} /> Live Webcam
+                            <Badge bg="warning" className="ms-2" style={{ fontSize: '9px' }}>COMING SOON</Badge>
+                        </h6>
+                        <div
+                            className="bg-dark border border-secondary rounded d-flex align-items-center justify-content-center"
+                            style={{ height: '200px' }}
+                        >
+                            <div className="text-center text-white-50">
+                                <Camera size={48} className="mb-2 opacity-50" />
+                                <div className="small">Webcam feed will display here</div>
+                                <div className="text-white-50" style={{ fontSize: '11px' }}>
+                                    Showing nearest DriveBC webcam to advisory location
+                                </div>
+                            </div>
+                        </div>
+                    </Card.Body>
+                </Card>
 
             </Modal.Body>
 

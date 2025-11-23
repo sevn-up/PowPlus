@@ -43,7 +43,7 @@ export const isRoadClosure = (event) => {
  * Parse event type to display information with enhanced natural disaster and closure detection
  * @param {string} eventType - Event type from API
  * @param {string} description - Optional event description for detailed categorization
- * @returns {Object} Display info with icon, color, and label
+ * @returns {Object} Display info with icon, color, label, and category
  */
 export const parseEventType = (eventType, description = '') => {
     const desc = description.toLowerCase();
@@ -52,101 +52,133 @@ export const parseEventType = (eventType, description = '') => {
     if (eventType === 'INCIDENT') {
         // Landslide
         if (desc.includes('landslide') || desc.includes('landslip')) {
-            return { label: 'Landslide', color: '#8B4513', icon: '🪨' };
+            return { label: 'Landslide', color: '#8B4513', icon: '🏔️', category: 'Natural Hazard' };
         }
 
         // Flooding / Washout
         if (desc.includes('flood') || desc.includes('washout')) {
-            return { label: 'Flooding', color: '#1E88E5', icon: '🌊' };
+            return { label: 'Flooding', color: '#1E88E5', icon: '🌊', category: 'Natural Hazard' };
         }
 
         // Avalanche-related closure
         if (desc.includes('avalanche') && (desc.includes('closed') || desc.includes('closure'))) {
-            return { label: 'Avalanche Closure', color: '#D32F2F', icon: '⛔' };
+            return { label: 'Avalanche Closure', color: '#D32F2F', icon: '⛔', category: 'Critical Closure' };
         }
 
         // General road closure
         if (desc.includes('road closed') || desc.includes('closure')) {
-            return { label: 'Road Closed', color: '#C62828', icon: '🚫' };
+            return { label: 'Road Closed', color: '#C62828', icon: '🚫', category: 'Critical Closure' };
         }
 
         // Default incident
-        return { label: 'Incident', color: '#FF4444', icon: '⚠️' };
+        return { label: 'Incident', color: '#FF4444', icon: '⚠️', category: 'Road Incident' };
     }
 
     // Enhanced ROAD_CONDITION sub-categorization
     if (eventType === 'ROAD_CONDITION') {
-        // High Priority: Chains/4x4 Required (critical for trip planning)
+        // WINTER CONDITIONS
+        // Chains Required
         if (desc.includes('chain') || desc.includes('4x4') || desc.includes('4wd')) {
-            return { label: 'Chains Required', color: '#FF6B35', icon: '⛓️' };
+            return { label: 'Chains Required', color: '#FF6B35', icon: '⛓️', category: 'Winter Conditions' };
         }
 
-        // High Priority: Ice conditions (safety critical)
-        if (desc.includes('black ice') || desc.includes('icy') || desc.includes('ice')) {
-            return { label: 'Ice Warning', color: '#4FC3F7', icon: '🧊' };
+        // Ice conditions
+        if (desc.includes('black ice')) {
+            return { label: 'Black Ice', color: '#1E3A8A', icon: '🧊', category: 'Winter Conditions' };
+        }
+        if (desc.includes('icy') || desc.includes(' ice')) {
+            return { label: 'Icy Sections', color: '#4FC3F7', icon: '🧊', category: 'Winter Conditions' };
         }
 
-        // High Priority: Snow on road
-        if (desc.includes('compact snow') || desc.includes('snow covered') ||
-            desc.includes('loose snow') || desc.includes('snow on road')) {
-            return { label: 'Snow on Road', color: '#81C3D7', icon: '🌨️' };
+        // Snow on road
+        if (desc.includes('compact snow') || desc.includes('packed snow')) {
+            return { label: 'Packed Snow', color: '#5B8FB9', icon: '❄️', category: 'Winter Conditions' };
+        }
+        if (desc.includes('snow covered') || desc.includes('snow on road')) {
+            return { label: 'Snow Covered', color: '#81C3D7', icon: '🌨️', category: 'Winter Conditions' };
+        }
+        if (desc.includes('loose snow')) {
+            return { label: 'Loose Snow', color: '#B0D4E3', icon: '❄️', category: 'Winter Conditions' };
         }
 
-        // Medium Priority: Drifting/blowing snow (visibility issue)
+        // Drifting/blowing snow
         if (desc.includes('drifting') || desc.includes('blowing snow')) {
-            return { label: 'Blowing Snow', color: '#B0BEC5', icon: '💨' };
+            return { label: 'Blowing Snow', color: '#B0BEC5', icon: '🌬️', category: 'Visibility Warning' };
         }
 
-        // Medium Priority: Visibility issues
-        if (desc.includes('fog') || desc.includes('visibility reduced') ||
-            desc.includes('limited visibility')) {
-            return { label: 'Poor Visibility', color: '#90A4AE', icon: '🌫️' };
+        // VISIBILITY ISSUES
+        if (desc.includes('fog') || desc.includes('limited visibility')) {
+            return { label: 'Fog / Low Visibility', color: '#78909C', icon: '🌫️', category: 'Visibility Warning' };
+        }
+        if (desc.includes('visibility reduced')) {
+            return { label: 'Reduced Visibility', color: '#90A4AE', icon: '👁️', category: 'Visibility Warning' };
         }
 
-        // Medium Priority: Debris/obstacles
-        if (desc.includes('debris') || desc.includes('fallen rock') ||
-            desc.includes('rockfall') || desc.includes('fallen tree')) {
-            return { label: 'Debris', color: '#8D6E63', icon: '🪨' };
+        // SURFACE HAZARDS
+        // Water pooling / wet conditions
+        if (desc.includes('water pooling') || desc.includes('pooling water')) {
+            return { label: 'Water Pooling', color: '#2196F3', icon: '💧', category: 'Surface Hazard' };
+        }
+        if (desc.includes('wet') || desc.includes('damp')) {
+            return { label: 'Wet Road', color: '#64B5F6', icon: '💦', category: 'Surface Hazard' };
         }
 
-        // Medium Priority: Slippery conditions
-        if (desc.includes('slippery') || desc.includes('slushy')) {
-            return { label: 'Slippery Road', color: '#FFA726', icon: '⚠️' };
+        // Debris/obstacles
+        if (desc.includes('rockfall') || desc.includes('fallen rock')) {
+            return { label: 'Rockfall', color: '#6D4C41', icon: '🪨', category: 'Surface Hazard' };
+        }
+        if (desc.includes('debris')) {
+            return { label: 'Debris on Road', color: '#8D6E63', icon: '⚠️', category: 'Surface Hazard' };
+        }
+        if (desc.includes('fallen tree') || desc.includes('tree')) {
+            return { label: 'Fallen Tree', color: '#795548', icon: '🌲', category: 'Surface Hazard' };
         }
 
-        // Default road condition
-        return { label: 'Road Condition', color: '#FFD700', icon: '🛣️' };
+        // Slippery conditions
+        if (desc.includes('slippery')) {
+            return { label: 'Slippery Sections', color: '#FFA726', icon: '⚠️', category: 'Surface Hazard' };
+        }
+        if (desc.includes('slushy')) {
+            return { label: 'Slushy Road', color: '#FFB74D', icon: '🌊', category: 'Winter Conditions' };
+        }
+
+        // Default road condition - check for any condition keywords
+        if (desc.includes('watch for') || desc.includes('caution')) {
+            return { label: 'Drive with Caution', color: '#FFC107', icon: '⚠️', category: 'Road Advisory' };
+        }
+
+        return { label: 'Road Advisory', color: '#FFD700', icon: '🛣️', category: 'Road Advisory' };
     }
 
     // Enhanced WEATHER_CONDITION sub-categorization
     if (eventType === 'WEATHER_CONDITION') {
         // Heavy snow
         if (desc.includes('heavy snow') || desc.includes('snowfall') || desc.includes('snow storm')) {
-            return { label: 'Heavy Snow', color: '#1976D2', icon: '❄️' };
+            return { label: 'Heavy Snow', color: '#1976D2', icon: '❄️', category: 'Active Weather' };
         }
 
         // Fog
         if (desc.includes('fog') || desc.includes('limited visibility')) {
-            return { label: 'Fog', color: '#78909C', icon: '🌫️' };
+            return { label: 'Fog', color: '#78909C', icon: '🌫️', category: 'Active Weather' };
         }
 
         // Rain
         if (desc.includes('rain') || desc.includes('heavy rain') || desc.includes('storm')) {
-            return { label: 'Heavy Rain', color: '#0288D1', icon: '🌧️' };
+            return { label: 'Heavy Rain', color: '#0288D1', icon: '🌧️', category: 'Active Weather' };
         }
 
         // High winds
         if (desc.includes('wind') || desc.includes('high wind') || desc.includes('gale')) {
-            return { label: 'High Winds', color: '#546E7A', icon: '💨' };
+            return { label: 'High Winds', color: '#546E7A', icon: '💨', category: 'Active Weather' };
         }
 
         // Avalanche risk
         if (desc.includes('avalanche')) {
-            return { label: 'Avalanche Risk', color: '#D32F2F', icon: '⚠️' };
+            return { label: 'Avalanche Risk', color: '#D32F2F', icon: '⚠️', category: 'Active Weather' };
         }
 
         // Default weather condition
-        return { label: 'Weather', color: '#4A90E2', icon: '☁️' };
+        return { label: 'Weather', color: '#4A90E2', icon: '☁️', category: 'Active Weather' };
     }
 
     // CONSTRUCTION - Less prominent since we're filtering most out
@@ -154,7 +186,8 @@ export const parseEventType = (eventType, description = '') => {
         return {
             label: 'Construction',
             color: '#FFA500',
-            icon: '🚧'
+            icon: '🚧',
+            category: 'Construction'
         };
     }
 
@@ -163,15 +196,17 @@ export const parseEventType = (eventType, description = '') => {
         return {
             label: 'Special Event',
             color: '#9B59B6',
-            icon: '📅'
+            icon: '📅',
+            category: 'Special Event'
         };
     }
 
     // Default
     return {
-        label: 'Other',
+        label: 'Road Advisory',
         color: '#95A5A6',
-        icon: 'ℹ️'
+        icon: 'ℹ️',
+        category: 'Other'
     };
 };
 
@@ -252,6 +287,24 @@ export const getNextUpdate = (description) => {
     if (!description) return null;
     const match = description.match(/Next update time (.*?)\./);
     return match ? match[1] : null;
+};
+
+/**
+ * Extract road segment information (from/to) from event
+ * @param {Object} event - Event object
+ * @returns {Object|null} Segment info with from and to, or null
+ */
+export const getRoadSegment = (event) => {
+    if (!event.roads || event.roads.length === 0) return null;
+
+    const road = event.roads[0];
+    if (!road.from && !road.to) return null;
+
+    return {
+        from: road.from || 'Start',
+        to: road.to || 'End',
+        direction: road.direction || 'BOTH'
+    };
 };
 
 /**

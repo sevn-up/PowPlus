@@ -6,7 +6,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './MapCard.css';
 import { getAvalancheForecastAreas, getAvalancheForecastProducts, parseDangerRating } from '../services/avalancheApi';
-import { getDriveBCEvents, parseEventType, parseSeverity, getRoadNames, prioritizeEvents, getNextUpdate } from '../services/mapApi';
+import { getDriveBCEvents, parseEventType, parseSeverity, getRoadNames, getRoadSegment, prioritizeEvents, getNextUpdate } from '../services/mapApi';
 import { getTerrainLayerConfig } from '../services/terrainLayers';
 import RoadEventModal from './RoadEventModal';
 
@@ -325,7 +325,13 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                                 <span style={{ fontSize: '24px' }}>{typeInfo.icon}</span>
                                 <div>
                                     <strong style={{ color: '#f5f5f5', fontSize: '15px', display: 'block' }}>{typeInfo.label}</strong>
-                                    <span style={{ fontSize: '11px', color: '#ccc' }}>Road Event</span>
+                                    <span style={{
+                                        fontSize: '11px',
+                                        color: typeInfo.color,
+                                        fontWeight: '600',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>{typeInfo.category || 'Road Event'}</span>
                                 </div>
                             </div>
 
@@ -346,6 +352,14 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                             <div style={{ marginBottom: '10px' }}>
                                 <div style={{ fontSize: '11px', color: '#ddd', marginBottom: '4px', textTransform: 'uppercase', fontWeight: '600' }}>Location</div>
                                 <div style={{ color: '#f5f5f5', fontSize: '13px', fontWeight: '500' }}>{roadNames}</div>
+                                {(() => {
+                                    const segment = getRoadSegment(event);
+                                    return segment && (
+                                        <div style={{ fontSize: '11px', color: '#bbb', marginTop: '4px', fontStyle: 'italic' }}>
+                                            📍 {segment.from} → {segment.to}
+                                        </div>
+                                    );
+                                })()}
                             </div>
 
                             <div style={{
