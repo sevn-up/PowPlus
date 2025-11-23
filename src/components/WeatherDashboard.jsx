@@ -7,6 +7,7 @@ import { calculatePowderScore, calculateSnowfallTotal, getBestSkiingWindow } fro
 import { locations, getLocationByName, getResorts, getBackcountryZones } from '../data/locationData';
 import AvalancheDetailModal from './AvalancheDetailModal';
 import AnimatedBackground from './AnimatedBackground';
+import MapCard from './MapCard';
 
 const WeatherDashboard = () => {
     const [town, setTown] = useState('Whistler');
@@ -636,6 +637,17 @@ const WeatherDashboard = () => {
                                             )}
                                         </Card.Body>
                                     </Card>
+                                </Col>
+
+                                {/* Interactive Map */}
+                                <Col md={12}>
+                                    <MapCard
+                                        location={currentLocation}
+                                        coordinates={weather ? {
+                                            lat: weather.latitude,
+                                            lon: weather.longitude
+                                        } : null}
+                                    />
                                 </Col>
                             </Row>
                         </Container>
