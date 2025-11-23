@@ -273,8 +273,8 @@ const WeatherDashboard = () => {
                                 </Card.Body>
                             </Card>
 
-                            {/* Avalanche Safety Card */}
-                            {avalancheForecast && avalancheForecast.report && (
+                            {/* Avalanche Safety Card - Only show for locations with valid avalanche zones */}
+                            {avalancheForecast && avalancheForecast.report && currentLocation?.avalancheZone && (
                                 <Card
                                     className="glass-card border-0 mb-4 text-white shadow-lg hover-scale transition-all"
                                     style={{ cursor: 'pointer' }}

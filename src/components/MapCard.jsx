@@ -8,6 +8,7 @@ import './MapCard.css';
 import { getAvalancheForecastAreas, getAvalancheForecastProducts, parseDangerRating } from '../services/avalancheApi';
 import { getDriveBCEvents, parseEventType, parseSeverity, getRoadNames, prioritizeEvents } from '../services/mapApi';
 import { getTerrainLayerConfig } from '../services/terrainLayers';
+import RoadEventModal from './RoadEventModal';
 
 // Fix for default marker icons in bundlers
 delete L.Icon.Default.prototype._getIconUrl;
@@ -76,6 +77,8 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
     const [driveBCEvents, setDriveBCEvents] = useState([]);
     const [showRoadEventsLayer, setShowRoadEventsLayer] = useState(true);
     const [showTerrainLayer, setShowTerrainLayer] = useState(false);
+    const [showRoadEventModal, setShowRoadEventModal] = useState(false);
+    const [selectedRoadEvent, setSelectedRoadEvent] = useState(null);
     const mapRef = useRef(null);
 
     // Default to Whistler if no coordinates provided
@@ -190,12 +193,12 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
 
             const popupContent = `
                 <div style="min-width: 250px; font-family: system-ui, -apple-system, sans-serif;">
-                    <strong style="font-size: 16px; color: #333; display: block; margin-bottom: 12px;">${areaName}</strong>
+                    <strong style="font-size: 16px; color: #f5f5f5; display: block; margin-bottom: 12px;">${areaName}</strong>
                     
                     <div style="margin-bottom: 8px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                            <span style="font-size: 12px; color: #666; font-weight: 500;">Alpine</span>
-                            <span style="font-size: 11px; color: #999;">2500m+</span>
+                            <span style="font-size: 12px; color: #e0e0e0; font-weight: 600;">Alpine</span>
+                            <span style="font-size: 11px; color: #bbb;">2500m+</span>
                         </div>
                         <div style="padding: 6px 10px; background-color: ${alpineRating.color}; color: ${alpineRating.textColor}; border-radius: 4px; text-align: center; font-weight: bold; font-size: 13px;">
                             ${alpineRating.display}
@@ -204,8 +207,8 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                     
                     <div style="margin-bottom: 8px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                            <span style="font-size: 12px; color: #666; font-weight: 500;">Treeline</span>
-                            <span style="font-size: 11px; color: #999;">1500-2500m</span>
+                            <span style="font-size: 12px; color: #e0e0e0; font-weight: 600;">Treeline</span>
+                            <span style="font-size: 11px; color: #bbb;">1500-2500m</span>
                         </div>
                         <div style="padding: 6px 10px; background-color: ${treelineRating.color}; color: ${treelineRating.textColor}; border-radius: 4px; text-align: center; font-weight: bold; font-size: 13px;">
                             ${treelineRating.display}
@@ -214,16 +217,16 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                     
                     <div style="margin-bottom: 10px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                            <span style="font-size: 12px; color: #666; font-weight: 500;">Below Treeline</span>
-                            <span style="font-size: 11px; color: #999;">&lt;1500m</span>
+                            <span style="font-size: 12px; color: #e0e0e0; font-weight: 600;">Below Treeline</span>
+                            <span style="font-size: 11px; color: #bbb;">&lt;1500m</span>
                         </div>
                         <div style="padding: 6px 10px; background-color: ${belowTreelineRating.color}; color: ${belowTreelineRating.textColor}; border-radius: 4px; text-align: center; font-weight: bold; font-size: 13px;">
                             ${belowTreelineRating.display}
                         </div>
                     </div>
                     
-                    <div style="border-top: 1px solid #e0e0e0; padding-top: 8px; margin-top: 8px;">
-                        <small style="color: #666; font-size: 11px; display: block; text-align: center;">
+                    <div style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 8px; margin-top: 8px;">
+                        <small style="color: #ccc; font-size: 11px; display: block; text-align: center;">
                             📊 Click avalanche card for full forecast details
                         </small>
                     </div>
@@ -306,8 +309,8 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                             }}>
                                 <span style={{ fontSize: '24px' }}>{typeInfo.icon}</span>
                                 <div>
-                                    <strong style={{ color: '#333', fontSize: '15px', display: 'block' }}>{typeInfo.label}</strong>
-                                    <span style={{ fontSize: '11px', color: '#999' }}>Road Event</span>
+                                    <strong style={{ color: '#f5f5f5', fontSize: '15px', display: 'block' }}>{typeInfo.label}</strong>
+                                    <span style={{ fontSize: '11px', color: '#ccc' }}>Road Event</span>
                                 </div>
                             </div>
 
@@ -326,15 +329,15 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                             </div>
 
                             <div style={{ marginBottom: '10px' }}>
-                                <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px', textTransform: 'uppercase', fontWeight: '600' }}>Location</div>
-                                <div style={{ color: '#333', fontSize: '13px', fontWeight: '500' }}>{roadNames}</div>
+                                <div style={{ fontSize: '11px', color: '#ddd', marginBottom: '4px', textTransform: 'uppercase', fontWeight: '600' }}>Location</div>
+                                <div style={{ color: '#f5f5f5', fontSize: '13px', fontWeight: '500' }}>{roadNames}</div>
                             </div>
 
                             {event.headline && (
                                 <div style={{
-                                    color: '#555',
+                                    color: '#f0f0f0',
                                     fontSize: '12px',
-                                    backgroundColor: '#f8f9fa',
+                                    backgroundColor: 'rgba(255,255,255,0.1)',
                                     padding: '8px',
                                     borderRadius: '4px',
                                     marginBottom: '8px',
@@ -344,14 +347,43 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                                 </div>
                             )}
 
+                            <div style={{ marginTop: '12px', textAlign: 'center' }}>
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setSelectedRoadEvent(event);
+                                        setShowRoadEventModal(true);
+                                    }}
+                                    style={{
+                                        display: 'inline-block',
+                                        padding: '6px 12px',
+                                        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                                        color: '#fff',
+                                        textDecoration: 'none',
+                                        borderRadius: '4px',
+                                        fontSize: '12px',
+                                        fontWeight: '500',
+                                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                                        transition: 'background-color 0.2s',
+                                        cursor: 'pointer',
+                                        width: '100%'
+                                    }}
+                                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.25)'}
+                                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)'}
+                                >
+                                    View Full Report ↗
+                                </button>
+                            </div>
+
                             {event.updated && (
                                 <div style={{
                                     fontSize: '10px',
-                                    color: '#999',
+                                    color: '#ccc',
                                     textAlign: 'right',
                                     marginTop: '8px',
                                     paddingTop: '8px',
-                                    borderTop: '1px solid #e0e0e0'
+                                    borderTop: '1px solid rgba(255,255,255,0.2)'
                                 }}>
                                     🕐 Updated: {new Date(event.updated).toLocaleString('en-US', {
                                         month: 'short',
@@ -474,21 +506,21 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                                         paddingBottom: '8px',
                                         borderBottom: '2px solid #4A90E2'
                                     }}>
-                                        <strong style={{ fontSize: '16px', color: '#333', display: 'block' }}>{locationName}</strong>
-                                        <span style={{ fontSize: '11px', color: '#999' }}>📍 Selected Location</span>
+                                        <strong style={{ fontSize: '16px', color: '#f5f5f5', display: 'block' }}>{locationName}</strong>
+                                        <span style={{ fontSize: '11px', color: '#ccc' }}>📍 Selected Location</span>
                                     </div>
 
                                     <div style={{ marginBottom: '8px' }}>
-                                        <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px', textTransform: 'uppercase', fontWeight: '600' }}>Coordinates</div>
-                                        <div style={{ fontSize: '12px', color: '#666', fontFamily: 'monospace' }}>
+                                        <div style={{ fontSize: '11px', color: '#ddd', marginBottom: '4px', textTransform: 'uppercase', fontWeight: '600' }}>Coordinates</div>
+                                        <div style={{ fontSize: '12px', color: '#f0f0f0', fontFamily: 'monospace' }}>
                                             {center[0].toFixed(4)}°N, {center[1].toFixed(4)}°W
                                         </div>
                                     </div>
 
                                     {location?.elevation && (
                                         <div style={{ marginBottom: '8px' }}>
-                                            <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px', textTransform: 'uppercase', fontWeight: '600' }}>Elevation</div>
-                                            <div style={{ fontSize: '12px', color: '#666' }}>
+                                            <div style={{ fontSize: '11px', color: '#ddd', marginBottom: '4px', textTransform: 'uppercase', fontWeight: '600' }}>Elevation</div>
+                                            <div style={{ fontSize: '12px', color: '#f0f0f0' }}>
                                                 ⛰️ Base: {location.elevation.base}m
                                                 {location.elevation.summit && ` | Summit: ${location.elevation.summit}m`}
                                             </div>
@@ -498,13 +530,13 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                                     {location?.avalancheZone && (
                                         <div style={{
                                             marginTop: '10px',
-                                            padding: '6px 10px',
-                                            backgroundColor: '#FFF3E0',
-                                            borderLeft: '3px solid #FF9800',
+                                            padding: '8px 12px',
+                                            backgroundColor: '#D84315',
+                                            borderLeft: '4px solid #FF6F00',
                                             borderRadius: '4px'
                                         }}>
-                                            <div style={{ fontSize: '10px', color: '#E65100', fontWeight: '600', marginBottom: '2px' }}>AVALANCHE ZONE</div>
-                                            <div style={{ fontSize: '12px', color: '#333' }}>{location.avalancheZone}</div>
+                                            <div style={{ fontSize: '10px', color: '#FFE0B2', fontWeight: '600', marginBottom: '3px', letterSpacing: '0.5px' }}>AVALANCHE ZONE</div>
+                                            <div style={{ fontSize: '13px', color: '#FFFFFF', fontWeight: '600' }}>{location.avalancheZone}</div>
                                         </div>
                                     )}
                                 </div>
@@ -520,12 +552,18 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                     <small className="text-white-50">
                         Drag to pan • Scroll to zoom • Click areas for details
                     </small>
-                    <small className="text-white-50">
+                    <div className="text-white-50 small">
                         Lat: {center[0].toFixed(4)}, Lon: {center[1].toFixed(4)}
-                    </small>
+                    </div>
                 </div>
-            </Card.Body >
-        </Card >
+            </Card.Body>
+
+            <RoadEventModal
+                show={showRoadEventModal}
+                onHide={() => setShowRoadEventModal(false)}
+                event={selectedRoadEvent}
+            />
+        </Card>
     );
 };
 
