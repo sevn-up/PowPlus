@@ -24,6 +24,7 @@ const WeatherDashboard = () => {
     const allLocations = locations.map(loc => loc.name);
     const [savedLocations] = useState(allLocations);
     const [showSidebar, setShowSidebar] = useState(false);
+    const [forecastView, setForecastView] = useState('7day'); // '3day' or '7day'
 
     // Helper function to get weather icon based on WMO code
     const getWeatherIcon = (code, size = 20) => {
@@ -629,12 +630,31 @@ const WeatherDashboard = () => {
                                 <Col md={12}>
                                     <Card className="glass-card border-0 h-100 text-white shadow-lg hover-scale transition-all">
                                         <Card.Body>
-                                            <div className="d-flex align-items-center gap-2 mb-4 text-white-50 text-uppercase fw-bold small">
-                                                <Calendar size={16} /> 7-Day Forecast
+                                            <div className="d-flex align-items-center justify-content-between mb-4">
+                                                <div className="d-flex align-items-center gap-2 text-white-50 text-uppercase fw-bold small">
+                                                    <Calendar size={16} /> Forecast
+                                                </div>
+                                                <div className="btn-group btn-group-sm">
+                                                    <button
+                                                        className={`btn btn-sm ${forecastView === '3day' ? 'btn-primary' : 'btn-outline-light opacity-75'}`}
+                                                        onClick={() => setForecastView('3day')}
+                                                        style={{ fontSize: '0.75rem' }}
+                                                    >
+                                                        3 Day
+                                                    </button>
+                                                    <button
+                                                        className={`btn btn-sm ${forecastView === '7day' ? 'btn-primary' : 'btn-outline-light opacity-75'}`}
+                                                        onClick={() => setForecastView('7day')}
+                                                        style={{ fontSize: '0.75rem' }}
+                                                    >
+                                                        7 Day
+                                                    </button>
+                                                </div>
                                             </div>
+
                                             {weather.daily && (
-                                                <div className="d-flex flex-column gap-2">
-                                                    {weather.daily.time.slice(0, 7).map((date, idx) => {
+                                                <div className={`d-flex gap-2 ${forecastView === '7day' ? 'overflow-auto' : 'justify-content-between'}`} style={{ scrollbarWidth: 'thin' }}>
+                                                    {weather.daily.time.slice(0, forecastView === '3day' ? 3 : 7).map((date, idx) => {
                                                         const dayName = idx === 0 ? 'Today' : new Date(date).toLocaleDateString('en-US', { weekday: 'short' });
                                                         const maxTemp = Math.round(weather.daily.temperature_2m_max[idx]);
                                                         const minTemp = Math.round(weather.daily.temperature_2m_min[idx]);
@@ -644,27 +664,47 @@ const WeatherDashboard = () => {
                                                         const weatherCode = weather.daily.weather_code ? weather.daily.weather_code[idx] : 0;
                                                         const uvIndex = weather.daily.uv_index_max ? Math.round(weather.daily.uv_index_max[idx]) : 0;
 
+                                                        const is3Day = forecastView === '3day';
+
                                                         return (
-                                                            <div key={idx} className="d-flex align-items-center justify-content-between p-3 rounded-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
-                                                                <span className="fw-bold text-white" style={{ width: '80px' }}>{dayName}</span>
+                                                            <div
+                                                                key={idx}
+                                                                className="d-flex flex-column align-items-center gap-2 p-3 rounded-4 flex-shrink-0"
+                                                                style={{
+                                                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                                                    minWidth: is3Day ? '140px' : '90px',
+                                                                    flex: is3Day ? 1 : '0 0 auto'
+                                                                }}
+                                                            >
+                                                                {/* Day Name */}
+                                                                <div className="fw-bold text-white text-center" style={{ fontSize: is3Day ? '1rem' : '0.875rem' }}>
+                                                                    {dayName}
+                                                                </div>
 
-                                                                <div className="d-flex align-items-center gap-3 flex-grow-1 justify-content-center">
-                                                                    {/* Weather Icon */}
-                                                                    <div className="d-flex align-items-center">
-                                                                        {getWeatherIcon(weatherCode, 20)}
-                                                                    </div>
+                                                                {/* Weather Icon */}
+                                                                <div className="my-2">
+                                                                    {getWeatherIcon(weatherCode, is3Day ? 32 : 24)}
+                                                                </div>
 
+                                                                {/* Weather Details */}
+                                                                <div className="d-flex flex-column align-items-center gap-2 w-100">
                                                                     {/* Snowfall */}
                                                                     {snow > 0 && (
-                                                                        <div className="d-flex align-items-center gap-1 text-info">
-                                                                            <Snowflake size={14} />
-                                                                            <small className="fw-bold">{snow.toFixed(1)} cm</small>
+                                                                        <div className="d-flex flex-column align-items-center gap-1">
+                                                                            <div className="d-flex align-items-center gap-1">
+                                                                                <Snowflake size={is3Day ? 16 : 14} className="text-info" />
+                                                                                <span className="fw-bold text-info" style={{ fontSize: is3Day ? '0.95rem' : '0.8rem' }}>
+                                                                                    {snow.toFixed(1)} cm
+                                                                                </span>
+                                                                            </div>
                                                                         </div>
                                                                     )}
 
                                                                     {/* Precipitation Probability */}
                                                                     {precip > 0 && (
-                                                                        <small className="text-white-50">{precip}%</small>
+                                                                        <small className="text-white-50" style={{ fontSize: is3Day ? '0.85rem' : '0.75rem' }}>
+                                                                            {precip}%
+                                                                        </small>
                                                                     )}
 
                                                                     {/* Wind Speed Badge */}
@@ -673,13 +713,14 @@ const WeatherDashboard = () => {
                                                                             className="d-flex align-items-center gap-1 px-2 py-1 rounded-pill"
                                                                             style={{
                                                                                 backgroundColor: `${getWindColor(windSpeed)}20`,
-                                                                                border: `1px solid ${getWindColor(windSpeed)}40`
+                                                                                border: `1px solid ${getWindColor(windSpeed)}40`,
+                                                                                fontSize: is3Day ? '0.75rem' : '0.65rem'
                                                                             }}
                                                                         >
-                                                                            <Wind size={12} style={{ color: getWindColor(windSpeed) }} />
-                                                                            <small className="fw-medium" style={{ color: getWindColor(windSpeed), fontSize: '0.7rem' }}>
+                                                                            <Wind size={is3Day ? 14 : 12} style={{ color: getWindColor(windSpeed) }} />
+                                                                            <span className="fw-medium" style={{ color: getWindColor(windSpeed) }}>
                                                                                 {windSpeed}
-                                                                            </small>
+                                                                            </span>
                                                                         </div>
                                                                     )}
 
@@ -689,24 +730,45 @@ const WeatherDashboard = () => {
                                                                             className="d-flex align-items-center gap-1 px-2 py-1 rounded-pill"
                                                                             style={{
                                                                                 backgroundColor: `${getUVColor(uvIndex)}20`,
-                                                                                border: `1px solid ${getUVColor(uvIndex)}40`
+                                                                                border: `1px solid ${getUVColor(uvIndex)}40`,
+                                                                                fontSize: is3Day ? '0.75rem' : '0.65rem'
                                                                             }}
                                                                         >
-                                                                            <Sun size={12} style={{ color: getUVColor(uvIndex) }} />
-                                                                            <small className="fw-medium" style={{ color: getUVColor(uvIndex), fontSize: '0.7rem' }}>
+                                                                            <Sun size={is3Day ? 14 : 12} style={{ color: getUVColor(uvIndex) }} />
+                                                                            <span className="fw-medium" style={{ color: getUVColor(uvIndex) }}>
                                                                                 UV {uvIndex}
-                                                                            </small>
+                                                                            </span>
                                                                         </div>
                                                                     )}
                                                                 </div>
 
                                                                 {/* Temperature Range */}
-                                                                <div className="d-flex align-items-center gap-3">
-                                                                    <small className="text-white-50">{minTemp}°</small>
-                                                                    <div className="rounded-pill" style={{ width: '60px', height: '4px', backgroundColor: 'rgba(255, 255, 255, 0.2)' }}>
-                                                                        <div className="bg-gradient-to-r from-info to-warning h-100 rounded-pill" style={{ width: '60%', marginLeft: '20%' }}></div>
+                                                                <div className="d-flex flex-column align-items-center gap-2 mt-2 w-100">
+                                                                    <span className="fw-bold text-white" style={{ fontSize: is3Day ? '1.1rem' : '0.95rem' }}>
+                                                                        {maxTemp}°
+                                                                    </span>
+                                                                    <div
+                                                                        className="rounded-pill"
+                                                                        style={{
+                                                                            width: '4px',
+                                                                            height: is3Day ? '40px' : '30px',
+                                                                            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                                                                            position: 'relative'
+                                                                        }}
+                                                                    >
+                                                                        <div
+                                                                            className="rounded-pill position-absolute"
+                                                                            style={{
+                                                                                width: '4px',
+                                                                                height: '60%',
+                                                                                top: '20%',
+                                                                                background: 'linear-gradient(to bottom, #fbbf24, #0ea5e9)'
+                                                                            }}
+                                                                        ></div>
                                                                     </div>
-                                                                    <span className="fw-bold text-white">{maxTemp}°</span>
+                                                                    <small className="text-white-50" style={{ fontSize: is3Day ? '0.9rem' : '0.8rem' }}>
+                                                                        {minTemp}°
+                                                                    </small>
                                                                 </div>
                                                             </div>
                                                         );
