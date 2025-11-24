@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { Card, Badge, Spinner, Form } from 'react-bootstrap';
-import { MapPin, Layers, AlertTriangle } from 'lucide-react';
+import { MapPin, Layers, AlertTriangle, Mountain } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMap, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './MapCard.css';
 import { getAvalancheForecastAreas, getAvalancheForecastProducts, parseDangerRating } from '../services/avalancheApi';
-import { getDriveBCEvents, parseEventType, parseSeverity, getRoadNames, prioritizeEvents } from '../services/mapApi';
+import { getDriveBCEvents, parseEventType, parseSeverity, getRoadNames, getRoadSegment, prioritizeEvents, getNextUpdate } from '../services/mapApi';
+import { getTerrainLayerConfig } from '../services/terrainLayers';
+import RoadEventModal from './RoadEventModal';
 
 // Fix for default marker icons in bundlers
 delete L.Icon.Default.prototype._getIconUrl;
@@ -30,8 +32,8 @@ const MapUpdater = ({ center }) => {
 };
 
 // Create custom icon for road events - Moved outside component to prevent recreation
-const createEventIcon = (eventType) => {
-    const typeInfo = parseEventType(eventType);
+const createEventIcon = (eventType, description = '') => {
+    const typeInfo = parseEventType(eventType, description);
 
     return L.divIcon({
         className: 'custom-event-marker',
@@ -58,13 +60,16 @@ const createEventIcon = (eventType) => {
 };
 
 // Icon cache to prevent recreation - MEMORY LEAK FIX
+// Cache key combines eventType and description for unique icons
 const eventIconCache = new Map();
 
-const getEventIcon = (eventType) => {
-    if (!eventIconCache.has(eventType)) {
-        eventIconCache.set(eventType, createEventIcon(eventType));
+const getEventIcon = (eventType, description = '') => {
+    // Create cache key from type and truncated description (first 50 chars to keep cache manageable)
+    const cacheKey = `${eventType}:${description.substring(0, 50)}`;
+    if (!eventIconCache.has(cacheKey)) {
+        eventIconCache.set(cacheKey, createEventIcon(eventType, description));
     }
-    return eventIconCache.get(eventType);
+    return eventIconCache.get(cacheKey);
 };
 
 const MapCard = ({ location, coordinates, avalancheForecast }) => {
@@ -74,6 +79,9 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
     const [showAvalancheLayer, setShowAvalancheLayer] = useState(true);
     const [driveBCEvents, setDriveBCEvents] = useState([]);
     const [showRoadEventsLayer, setShowRoadEventsLayer] = useState(true);
+    const [showTerrainLayer, setShowTerrainLayer] = useState(false);
+    const [showRoadEventModal, setShowRoadEventModal] = useState(false);
+    const [selectedRoadEvent, setSelectedRoadEvent] = useState(null);
     const mapRef = useRef(null);
 
     // Default to Whistler if no coordinates provided
@@ -117,11 +125,11 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                     east: -114,
                     west: -139
                 };
-                const events = await getDriveBCEvents(bounds);
+                const events = await getDriveBCEvents(bounds, 500);
                 if (isMounted) {
-                    // Prioritize and limit to 50 most severe events to reduce memory usage
-                    const prioritized = prioritizeEvents(events, 50);
-                    setDriveBCEvents(prioritized);
+                    // Filter to show all current road conditions across BC (no limit)
+                    const roadConditions = prioritizeEvents(events, 500);
+                    setDriveBCEvents(roadConditions);
                 }
             } catch (error) {
                 console.error('Failed to fetch DriveBC events:', error);
@@ -176,16 +184,55 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
     const onEachAvalancheFeature = useCallback((feature, layer) => {
         const areaId = feature.id;
         const areaName = feature.properties?.name || 'Unknown Area';
-        const rating = getDangerRatingForArea(areaId);
 
-        if (rating) {
+        // Get the full product for this area to access all danger ratings
+        const product = avalancheProducts?.find(p => p.area?.id === areaId);
+        const dangerRatings = product?.report?.dangerRatings?.[0]?.ratings;
+
+        if (dangerRatings) {
+            const alpineRating = parseDangerRating(dangerRatings.alp?.rating?.value);
+            const treelineRating = parseDangerRating(dangerRatings.tln?.rating?.value);
+            const belowTreelineRating = parseDangerRating(dangerRatings.btl?.rating?.value);
+
             const popupContent = `
-                <div style="min-width: 200px;">
-                    <strong style="font-size: 14px;">${areaName}</strong><br/>
-                    <div style="margin-top: 8px; padding: 8px; background-color: ${rating.color}; color: ${rating.textColor}; border-radius: 4px; text-align: center;">
-                        <strong>Alpine: ${rating.display}</strong>
+                <div style="min-width: 250px; font-family: system-ui, -apple-system, sans-serif;">
+                    <strong style="font-size: 16px; color: #f5f5f5; display: block; margin-bottom: 12px;">${areaName}</strong>
+                    
+                    <div style="margin-bottom: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <span style="font-size: 12px; color: #e0e0e0; font-weight: 600;">Alpine</span>
+                            <span style="font-size: 11px; color: #bbb;">2500m+</span>
+                        </div>
+                        <div style="padding: 6px 10px; background-color: ${alpineRating.color}; color: ${alpineRating.textColor}; border-radius: 4px; text-align: center; font-weight: bold; font-size: 13px;">
+                            ${alpineRating.display}
+                        </div>
                     </div>
-                    <small style="color: #666; margin-top: 4px; display: block;">Click avalanche card for full details</small>
+                    
+                    <div style="margin-bottom: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <span style="font-size: 12px; color: #e0e0e0; font-weight: 600;">Treeline</span>
+                            <span style="font-size: 11px; color: #bbb;">1500-2500m</span>
+                        </div>
+                        <div style="padding: 6px 10px; background-color: ${treelineRating.color}; color: ${treelineRating.textColor}; border-radius: 4px; text-align: center; font-weight: bold; font-size: 13px;">
+                            ${treelineRating.display}
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <span style="font-size: 12px; color: #e0e0e0; font-weight: 600;">Below Treeline</span>
+                            <span style="font-size: 11px; color: #bbb;">&lt;1500m</span>
+                        </div>
+                        <div style="padding: 6px 10px; background-color: ${belowTreelineRating.color}; color: ${belowTreelineRating.textColor}; border-radius: 4px; text-align: center; font-weight: bold; font-size: 13px;">
+                            ${belowTreelineRating.display}
+                        </div>
+                    </div>
+                    
+                    <div style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 8px; margin-top: 8px;">
+                        <small style="color: #ccc; font-size: 11px; display: block; text-align: center;">
+                            📊 Click avalanche card for full forecast details
+                        </small>
+                    </div>
                 </div>
             `;
             layer.bindPopup(popupContent);
@@ -218,7 +265,7 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
             layer.off('mouseover', handleMouseOver);
             layer.off('mouseout', handleMouseOut);
         });
-    }, [getDangerRatingForArea]);
+    }, [avalancheProducts]);
 
     // Memoize DriveBC markers to prevent re-rendering - MEMORY LEAK FIX: Use cached icons
     const driveBCMarkers = useMemo(() => {
@@ -231,8 +278,18 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
             // Only show events with valid coordinates
             if (!event.geography || !event.geography.coordinates) return null;
 
-            // Parse coordinates - API sometimes returns strings instead of numbers
-            const [lon, lat] = event.geography.coordinates;
+            // Handle different geometry types (Point vs LineString)
+            let lon, lat;
+            if (event.geography.type === 'LineString') {
+                // For LineString, use the middle point or first point
+                const coords = event.geography.coordinates;
+                const midIndex = Math.floor(coords.length / 2);
+                [lon, lat] = coords[midIndex] || coords[0];
+            } else {
+                // Default to Point
+                [lon, lat] = event.geography.coordinates;
+            }
+
             const parsedLat = typeof lat === 'string' ? parseFloat(lat) : lat;
             const parsedLon = typeof lon === 'string' ? parseFloat(lon) : lon;
 
@@ -243,54 +300,142 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
             }
 
             const eventType = event.event_type || 'INCIDENT';
-            const typeInfo = parseEventType(eventType);
+            const eventDescription = event.description || '';
+            const typeInfo = parseEventType(eventType, eventDescription);
             const severityInfo = parseSeverity(event.severity);
             const roadNames = getRoadNames(event);
+            const nextUpdate = getNextUpdate(eventDescription);
 
             return (
                 <Marker
                     key={`event-${event.id || idx}`}
                     position={[parsedLat, parsedLon]}
-                    icon={getEventIcon(eventType)}
+                    icon={getEventIcon(eventType, eventDescription)}
                 >
                     <Popup>
-                        <div style={{ minWidth: '200px' }}>
+                        <div style={{ minWidth: '240px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
                             <div style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '8px',
-                                marginBottom: '8px'
+                                gap: '10px',
+                                marginBottom: '10px',
+                                paddingBottom: '8px',
+                                borderBottom: `3px solid ${typeInfo.color}`
                             }}>
-                                <span style={{ fontSize: '20px' }}>{typeInfo.icon}</span>
-                                <strong style={{ color: '#333' }}>{typeInfo.label}</strong>
+                                <span style={{ fontSize: '24px' }}>{typeInfo.icon}</span>
+                                <div>
+                                    <strong style={{ color: '#f5f5f5', fontSize: '15px', display: 'block' }}>{typeInfo.label}</strong>
+                                    <span style={{
+                                        fontSize: '11px',
+                                        color: typeInfo.color,
+                                        fontWeight: '600',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>{typeInfo.category || 'Road Event'}</span>
+                                </div>
                             </div>
 
                             <div style={{
-                                padding: '6px 10px',
+                                padding: '8px 12px',
                                 backgroundColor: severityInfo.color,
                                 color: 'white',
-                                borderRadius: '4px',
-                                marginBottom: '8px',
-                                fontSize: '12px',
-                                fontWeight: 'bold'
+                                borderRadius: '6px',
+                                marginBottom: '10px',
+                                fontSize: '13px',
+                                fontWeight: 'bold',
+                                textAlign: 'center',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                             }}>
                                 {severityInfo.label} Severity
                             </div>
 
-                            <div style={{ marginBottom: '8px' }}>
-                                <strong style={{ color: '#666', fontSize: '12px' }}>Road:</strong>
-                                <div style={{ color: '#333' }}>{roadNames}</div>
+                            <div style={{ marginBottom: '10px' }}>
+                                <div style={{ fontSize: '11px', color: '#ddd', marginBottom: '4px', textTransform: 'uppercase', fontWeight: '600' }}>Location</div>
+                                <div style={{ color: '#f5f5f5', fontSize: '13px', fontWeight: '500' }}>{roadNames}</div>
+                                {(() => {
+                                    const segment = getRoadSegment(event);
+                                    return segment && (
+                                        <div style={{ fontSize: '11px', color: '#bbb', marginTop: '4px', fontStyle: 'italic' }}>
+                                            📍 {segment.from} → {segment.to}
+                                        </div>
+                                    );
+                                })()}
                             </div>
 
-                            {event.headline && (
+                            <div style={{
+                                color: '#f0f0f0',
+                                fontSize: '12px',
+                                backgroundColor: 'rgba(255,255,255,0.1)',
+                                padding: '8px',
+                                borderRadius: '4px',
+                                marginBottom: '8px',
+                                lineHeight: '1.4'
+                            }}>
+                                {event.description ? (
+                                    event.description.length > 120
+                                        ? `${event.description.substring(0, 120)}...`
+                                        : event.description
+                                ) : event.headline}
+                            </div>
+
+                            {nextUpdate && (
                                 <div style={{
-                                    color: '#555',
-                                    fontSize: '13px',
-                                    borderTop: '1px solid #eee',
-                                    paddingTop: '8px',
-                                    marginTop: '8px'
+                                    fontSize: '11px',
+                                    color: '#FFC107',
+                                    marginBottom: '8px',
+                                    fontWeight: '500',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
                                 }}>
-                                    {event.headline}
+                                    📅 Next Update: {nextUpdate}
+                                </div>
+                            )}
+
+                            <div style={{ marginTop: '12px', textAlign: 'center' }}>
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setSelectedRoadEvent(event);
+                                        setShowRoadEventModal(true);
+                                    }}
+                                    style={{
+                                        display: 'inline-block',
+                                        padding: '6px 12px',
+                                        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                                        color: '#fff',
+                                        textDecoration: 'none',
+                                        borderRadius: '4px',
+                                        fontSize: '12px',
+                                        fontWeight: '500',
+                                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                                        transition: 'background-color 0.2s',
+                                        cursor: 'pointer',
+                                        width: '100%'
+                                    }}
+                                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.25)'}
+                                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)'}
+                                >
+                                    View Full Report ↗
+                                </button>
+                            </div>
+
+                            {event.updated && (
+                                <div style={{
+                                    fontSize: '10px',
+                                    color: '#ccc',
+                                    textAlign: 'right',
+                                    marginTop: '8px',
+                                    paddingTop: '8px',
+                                    borderTop: '1px solid rgba(255,255,255,0.2)'
+                                }}>
+                                    🕐 Updated: {new Date(event.updated).toLocaleString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: 'numeric',
+                                        minute: '2-digit'
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -335,6 +480,19 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                             onChange={(e) => setShowRoadEventsLayer(e.target.checked)}
                             className="text-white"
                         />
+                        <Form.Check
+                            type="switch"
+                            id="terrain-layer-toggle"
+                            label={
+                                <span className="d-flex align-items-center gap-1 small text-white">
+                                    <Mountain size={12} />
+                                    Terrain
+                                </span>
+                            }
+                            checked={showTerrainLayer}
+                            onChange={(e) => setShowTerrainLayer(e.target.checked)}
+                            className="text-white"
+                        />
                         <Badge bg="secondary" className="d-flex align-items-center gap-1">
                             <Layers size={12} />
                             OpenStreetMap
@@ -361,6 +519,16 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                         />
 
+                        {/* Terrain overlay layer */}
+                        {showTerrainLayer && (
+                            <TileLayer
+                                attribution='Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+                                url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+                                maxZoom={17}
+                                opacity={0.6}
+                            />
+                        )}
+
                         {/* Avalanche forecast areas - MEMORY LEAK FIX: Added key prop */}
                         {showAvalancheLayer && avalancheAreas && (
                             <GeoJSON
@@ -377,12 +545,45 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                         {/* Current location marker */}
                         <Marker position={center}>
                             <Popup>
-                                <div className="text-dark">
-                                    <strong>{locationName}</strong>
-                                    <br />
-                                    <small>
-                                        {center[0].toFixed(4)}, {center[1].toFixed(4)}
-                                    </small>
+                                <div style={{ minWidth: '220px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                                    <div style={{
+                                        marginBottom: '10px',
+                                        paddingBottom: '8px',
+                                        borderBottom: '2px solid #4A90E2'
+                                    }}>
+                                        <strong style={{ fontSize: '16px', color: '#f5f5f5', display: 'block' }}>{locationName}</strong>
+                                        <span style={{ fontSize: '11px', color: '#ccc' }}>📍 Selected Location</span>
+                                    </div>
+
+                                    <div style={{ marginBottom: '8px' }}>
+                                        <div style={{ fontSize: '11px', color: '#ddd', marginBottom: '4px', textTransform: 'uppercase', fontWeight: '600' }}>Coordinates</div>
+                                        <div style={{ fontSize: '12px', color: '#f0f0f0', fontFamily: 'monospace' }}>
+                                            {center[0].toFixed(4)}°N, {center[1].toFixed(4)}°W
+                                        </div>
+                                    </div>
+
+                                    {location?.elevation && (
+                                        <div style={{ marginBottom: '8px' }}>
+                                            <div style={{ fontSize: '11px', color: '#ddd', marginBottom: '4px', textTransform: 'uppercase', fontWeight: '600' }}>Elevation</div>
+                                            <div style={{ fontSize: '12px', color: '#f0f0f0' }}>
+                                                ⛰️ Base: {location.elevation.base}m
+                                                {location.elevation.summit && ` | Summit: ${location.elevation.summit}m`}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {location?.avalancheZone && (
+                                        <div style={{
+                                            marginTop: '10px',
+                                            padding: '8px 12px',
+                                            backgroundColor: '#D84315',
+                                            borderLeft: '4px solid #FF6F00',
+                                            borderRadius: '4px'
+                                        }}>
+                                            <div style={{ fontSize: '10px', color: '#FFE0B2', fontWeight: '600', marginBottom: '3px', letterSpacing: '0.5px' }}>AVALANCHE ZONE</div>
+                                            <div style={{ fontSize: '13px', color: '#FFFFFF', fontWeight: '600' }}>{location.avalancheZone}</div>
+                                        </div>
+                                    )}
                                 </div>
                             </Popup>
                         </Marker>
@@ -396,11 +597,17 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                     <small className="text-white-50">
                         Drag to pan • Scroll to zoom • Click areas for details
                     </small>
-                    <small className="text-white-50">
+                    <div className="text-white-50 small">
                         Lat: {center[0].toFixed(4)}, Lon: {center[1].toFixed(4)}
-                    </small>
+                    </div>
                 </div>
             </Card.Body>
+
+            <RoadEventModal
+                show={showRoadEventModal}
+                onHide={() => setShowRoadEventModal(false)}
+                event={selectedRoadEvent}
+            />
         </Card>
     );
 };
