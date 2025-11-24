@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Form, Button, Navbar, Nav, Offcanvas, Badge, Alert } from 'react-bootstrap';
-import { Search, Snowflake, Wind, Thermometer, Mountain, MapPin, Calendar, Droplets, Sun, Menu, Eye, Ruler, AlertTriangle, TrendingUp, CloudSnow, Sunrise, Sunset, Cloud, CloudRain, CloudDrizzle, CloudFog, Zap } from 'lucide-react';
+import { Search, Snowflake, Wind, Thermometer, Mountain, MapPin, Calendar, Droplets, Sun, Menu, Eye, Ruler, AlertTriangle, TrendingUp, CloudSnow, Sunrise, Sunset, Cloud, CloudRain, CloudDrizzle, CloudFog, Zap, ArrowUp, Navigation } from 'lucide-react';
 import { getCoordinates, getWeather, getWeatherDescription } from '../services/weatherApi';
 import { getClosestAvalancheForecast, parseDangerRating, formatHighlights } from '../services/avalancheApi';
 import { calculatePowderScore, calculateSnowfallTotal, getBestSkiingWindow } from '../services/powderTracker';
@@ -8,7 +8,8 @@ import { locations, getLocationByName, getResorts, getBackcountryZones } from '.
 import AvalancheDetailModal from './AvalancheDetailModal';
 import AnimatedBackground from './AnimatedBackground';
 import MapCard from './MapCard';
-import { getSnowQuality, getVisibilityRating, getFreezingLevelWarning, getTemperatureColor } from '../utils/skiConditions';
+import { getWeatherIcon, getWindColor } from '../utils/weatherIcons.jsx';
+import { getSnowQuality, getVisibilityRating, getFreezingLevelWarning, getTemperatureColor, formatWindDirection } from '../utils/skiConditions';
 
 const WeatherDashboard = () => {
     const [town, setTown] = useState('Whistler');
@@ -27,31 +28,6 @@ const WeatherDashboard = () => {
     const [showSidebar, setShowSidebar] = useState(false);
     const [forecastView, setForecastView] = useState('10day'); // '3day' or '10day'
     const [isAnimating, setIsAnimating] = useState(false); // For smooth transitions
-
-    // Helper function to get weather icon based on WMO code
-    const getWeatherIcon = (code, size = 20) => {
-        const iconProps = { size, className: "drop-shadow-md" };
-        if (code === 0) return <Sun {...iconProps} className="text-warning drop-shadow-md" />;
-        if (code === 1) return <Sun {...iconProps} className="text-warning opacity-75 drop-shadow-md" />;
-        if (code === 2) return <Cloud {...iconProps} className="text-white-50 drop-shadow-md" />;
-        if (code === 3) return <Cloud {...iconProps} className="text-white drop-shadow-md" />;
-        if (code >= 45 && code <= 48) return <CloudFog {...iconProps} className="text-white-50 drop-shadow-md" />;
-        if (code >= 51 && code <= 57) return <CloudDrizzle {...iconProps} className="text-info drop-shadow-md" />;
-        if (code >= 61 && code <= 67) return <CloudRain {...iconProps} className="text-info drop-shadow-md" />;
-        if (code >= 71 && code <= 77) return <Snowflake {...iconProps} className="text-white drop-shadow-md" />;
-        if (code >= 80 && code <= 82) return <CloudRain {...iconProps} className="text-info drop-shadow-md" />;
-        if (code >= 85 && code <= 86) return <CloudSnow {...iconProps} className="text-white drop-shadow-md" />;
-        if (code >= 95 && code <= 99) return <Zap {...iconProps} className="text-warning drop-shadow-md" />;
-        return <Sun {...iconProps} className="text-warning opacity-50 drop-shadow-md" />;
-    };
-
-    // Helper function to get wind speed color
-    const getWindColor = (speed) => {
-        if (speed < 20) return '#10b981'; // Green - Calm
-        if (speed < 40) return '#fbbf24'; // Yellow - Breezy
-        if (speed < 60) return '#f97316'; // Orange - Windy
-        return '#ef4444'; // Red - Very windy
-    };
 
     // Helper function to get UV index color
     const getUVColor = (index) => {
@@ -362,6 +338,7 @@ const WeatherDashboard = () => {
                                             const snow = weather.hourly.snowfall[idx];
                                             const weatherCode = weather.hourly.weather_code ? weather.hourly.weather_code[idx] : 0;
                                             const windSpeed = weather.hourly.wind_speed_10m ? Math.round(weather.hourly.wind_speed_10m[idx]) : 0;
+                                            const windDirection = weather.hourly.wind_direction_10m ? weather.hourly.wind_direction_10m[idx] : 0;
                                             const precipProb = weather.hourly.precipitation_probability ? weather.hourly.precipitation_probability[idx] : 0;
                                             const visibility = weather.hourly.visibility ? weather.hourly.visibility[idx] : 10000;
                                             const cloudCover = weather.hourly.cloud_cover ? weather.hourly.cloud_cover[idx] : 0;
@@ -385,10 +362,14 @@ const WeatherDashboard = () => {
                                                         minWidth: '85px',
                                                         padding: '0.75rem 0.5rem',
                                                         borderRadius: '1rem',
-                                                        background: isDay
-                                                            ? 'linear-gradient(180deg, rgba(135, 206, 235, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)'
-                                                            : 'linear-gradient(180deg, rgba(25, 25, 112, 0.15) 0%, rgba(0, 0, 0, 0.1) 100%)',
-                                                        border: isNow ? '2px solid rgba(59, 130, 246, 0.5)' : 'none',
+                                                        background: (isSunriseHour || isSunsetHour)
+                                                            ? 'linear-gradient(180deg, rgba(251, 191, 36, 0.15) 0%, rgba(0, 0, 0, 0) 100%)'
+                                                            : (isDay
+                                                                ? 'linear-gradient(180deg, rgba(135, 206, 235, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)'
+                                                                : 'linear-gradient(180deg, rgba(25, 25, 112, 0.15) 0%, rgba(0, 0, 0, 0.1) 100%)'),
+                                                        border: isNow
+                                                            ? '2px solid rgba(59, 130, 246, 0.5)'
+                                                            : ((isSunriseHour || isSunsetHour) ? '2px solid rgba(251, 191, 36, 0.5)' : 'none'),
                                                         transition: 'all 0.2s ease',
                                                         cursor: 'pointer'
                                                     }}
@@ -402,21 +383,27 @@ const WeatherDashboard = () => {
                                                     }}
                                                 >
                                                     {/* Hour label */}
-                                                    <small className="fw-bold" style={{ color: isNow ? '#3b82f6' : '#fff', fontSize: '0.75rem' }}>
-                                                        {isNow ? 'Now' : currentHour}
-                                                    </small>
+                                                    {/* Hour label with sunrise/sunset inline */}
+                                                    {/* Hour label */}
+                                                    <div style={{ minHeight: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <small
+                                                            className="fw-bold"
+                                                            style={{
+                                                                color: isNow ? '#3b82f6' : ((isSunriseHour || isSunsetHour) ? '#fbbf24' : '#fff'),
+                                                                fontSize: '0.75rem'
+                                                            }}
+                                                        >
+                                                            {isNow ? 'Now' : currentHour}
+                                                        </small>
+                                                    </div>
 
-                                                    {/* Sunrise/Sunset indicator */}
-                                                    {(isSunriseHour || isSunsetHour) && (
-                                                        <div style={{ height: '18px', fontSize: '0.9rem' }}>
-                                                            {isSunriseHour ? '🌅' : '🌇'}
-                                                        </div>
-                                                    )}
-                                                    {!isSunriseHour && !isSunsetHour && <div style={{ height: '18px' }}></div>}
-
-                                                    {/* Weather icon */}
+                                                    {/* Weather icon - show snowflake if snowing */}
                                                     <div style={{ height: '36px' }} className="d-flex align-items-center">
-                                                        {getWeatherIcon(weatherCode, 32)}
+                                                        {snow > 0 ? (
+                                                            <Snowflake size={32} className="text-info" style={{ filter: 'drop-shadow(0 0 2px rgba(59, 130, 246, 0.5))' }} />
+                                                        ) : (
+                                                            getWeatherIcon(weatherCode, 32)
+                                                        )}
                                                     </div>
 
                                                     {/* Temperature with color coding */}
@@ -430,135 +417,100 @@ const WeatherDashboard = () => {
                                                         {temp}°
                                                     </span>
 
-                                                    {/* Feels-like badge (only if significantly different) */}
-                                                    <div style={{ minHeight: '18px' }}>
-                                                        {tempDiff >= 3 && (
-                                                            <small
-                                                                className="badge rounded-pill"
-                                                                style={{
-                                                                    fontSize: '0.6rem',
-                                                                    backgroundColor: 'rgba(251, 191, 36, 0.2)',
-                                                                    color: '#fbbf24',
-                                                                    border: '1px solid rgba(251, 191, 36, 0.3)'
-                                                                }}
-                                                            >
-                                                                Feels {feelsLike}°
-                                                            </small>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Snowfall badge with quality indicator */}
-                                                    <div style={{ minHeight: '26px' }}>
-                                                        {snow > 0 && (
-                                                            <div className="d-flex flex-column align-items-center gap-1">
-                                                                <span
-                                                                    className="badge rounded-pill shadow-sm d-flex align-items-center gap-1"
-                                                                    style={{
-                                                                        fontSize: '0.7rem',
-                                                                        backgroundColor: `${snowQuality.color}30`,
-                                                                        color: snowQuality.color,
-                                                                        border: `1px solid ${snowQuality.color}60`,
-                                                                        padding: '2px 6px'
-                                                                    }}
-                                                                >
-                                                                    {snowQuality.emoji} {snow}cm
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Freezing level warning (only when relevant) */}
-                                                    <div style={{ minHeight: '18px' }}>
-                                                        {freezingWarning && freezingWarning.warning && (
-                                                            <small
-                                                                className="badge rounded-pill"
-                                                                style={{
-                                                                    fontSize: '0.55rem',
-                                                                    backgroundColor: `${freezingWarning.color}20`,
-                                                                    color: freezingWarning.color,
-                                                                    border: `1px solid ${freezingWarning.color}40`,
-                                                                    padding: '2px 5px'
-                                                                }}
-                                                            >
-                                                                {freezingWarning.emoji} {freezingWarning.status}
-                                                            </small>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Visibility warning */}
-                                                    <div style={{ minHeight: '18px' }}>
-                                                        {visibilityInfo.warning && (
-                                                            <small
-                                                                className="badge rounded-pill"
-                                                                style={{
-                                                                    fontSize: '0.55rem',
-                                                                    backgroundColor: `${visibilityInfo.color}20`,
-                                                                    color: visibilityInfo.color,
-                                                                    border: `1px solid ${visibilityInfo.color}40`,
-                                                                    padding: '2px 5px'
-                                                                }}
-                                                            >
-                                                                Vis: {visibilityInfo.distance}km
-                                                            </small>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Wind badge (enhanced with better visibility) */}
-                                                    <div style={{ minHeight: '20px' }}>
-                                                        {windSpeed >= 20 && (
-                                                            <div
-                                                                className="d-flex align-items-center gap-1 rounded-pill"
-                                                                style={{
-                                                                    backgroundColor: `${getWindColor(windSpeed)}25`,
-                                                                    border: `1px solid ${getWindColor(windSpeed)}50`,
-                                                                    fontSize: '0.65rem',
-                                                                    padding: '2px 6px',
-                                                                    whiteSpace: 'nowrap'
-                                                                }}
-                                                            >
-                                                                <Wind size={10} style={{ color: getWindColor(windSpeed) }} />
-                                                                <span className="fw-bold" style={{ color: getWindColor(windSpeed) }}>
-                                                                    {windSpeed}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Cloud cover mini bar */}
-                                                    <div style={{ width: '100%', minHeight: '12px' }}>
-                                                        {cloudCover > 20 && (
-                                                            <div style={{ width: '100%' }}>
-                                                                <div
-                                                                    style={{
-                                                                        width: '100%',
-                                                                        height: '3px',
-                                                                        backgroundColor: 'rgba(255,255,255,0.15)',
-                                                                        borderRadius: '2px',
-                                                                        overflow: 'hidden'
-                                                                    }}
-                                                                >
-                                                                    <div
-                                                                        style={{
-                                                                            width: `${cloudCover}%`,
-                                                                            height: '100%',
-                                                                            backgroundColor: 'rgba(255,255,255,0.6)',
-                                                                            transition: 'width 0.3s ease'
-                                                                        }}
-                                                                    />
-                                                                </div>
-                                                                <small className="text-white-50 d-block text-center" style={{ fontSize: '0.55rem', marginTop: '2px' }}>
-                                                                    Cover {cloudCover}%
-                                                                </small>
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Precipitation probability */}
-                                                    {precipProb > 0 && (
-                                                        <small className="text-white-50" style={{ fontSize: '0.65rem' }}>
-                                                            Precip: {precipProb}%
+                                                    {/* Feels-like (always show with icon) */}
+                                                    <div style={{ height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
+                                                        <Thermometer size={10} style={{ color: tempDiff >= 3 ? '#fbbf24' : '#9ca3af', opacity: 0.7 }} />
+                                                        <small
+                                                            className="text-white-50"
+                                                            style={{
+                                                                fontSize: '0.6rem',
+                                                                color: tempDiff >= 3 ? '#fbbf24' : '#9ca3af',
+                                                                fontWeight: tempDiff >= 3 ? 'bold' : 'normal'
+                                                            }}
+                                                        >
+                                                            {feelsLike}°
                                                         </small>
-                                                    )}
+                                                    </div>
+
+                                                    {/* Snowfall (always show with icon) */}
+                                                    <div style={{ height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                                                        <Snowflake size={10} style={{ color: snow > 0 ? snowQuality.color : '#9ca3af', opacity: snow > 0 ? 1 : 0.3 }} />
+                                                        {snow > 0 ? (
+                                                            <span
+                                                                className="fw-bold"
+                                                                style={{
+                                                                    fontSize: '0.65rem',
+                                                                    color: snowQuality.color
+                                                                }}
+                                                            >
+                                                                {snow.toFixed(1)}cm
+                                                            </span>
+                                                        ) : (
+                                                            <small className="text-white-50" style={{ fontSize: '0.6rem', opacity: 0.3 }}>
+                                                                0cm
+                                                            </small>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Visibility (always show with icon) */}
+                                                    <div style={{ height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                                                        <Eye size={10} style={{ color: visibilityInfo.warning ? visibilityInfo.color : '#9ca3af', opacity: visibilityInfo.warning ? 1 : 0.5 }} />
+                                                        <small
+                                                            className="text-white-50"
+                                                            style={{
+                                                                fontSize: '0.6rem',
+                                                                color: visibilityInfo.warning ? visibilityInfo.color : '#9ca3af',
+                                                                fontWeight: visibilityInfo.warning ? 'bold' : 'normal'
+                                                            }}
+                                                        >
+                                                            {visibilityInfo.distance}km
+                                                        </small>
+                                                    </div>
+
+                                                    {/* Wind (always show with direction) */}
+                                                    <div style={{ height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                                                        <Wind size={10} style={{ color: windSpeed >= 20 ? getWindColor(windSpeed) : '#9ca3af', opacity: windSpeed >= 20 ? 1 : 0.5 }} />
+                                                        <small
+                                                            className="text-white-50"
+                                                            style={{
+                                                                fontSize: '0.6rem',
+                                                                color: windSpeed >= 20 ? getWindColor(windSpeed) : '#9ca3af',
+                                                                fontWeight: windSpeed >= 20 ? 'bold' : 'normal'
+                                                            }}
+                                                        >
+                                                            {windSpeed} {formatWindDirection(windDirection).name}
+                                                        </small>
+                                                    </div>
+
+                                                    {/* Cloud cover (always show with icon) */}
+                                                    <div style={{ height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                                                        <Cloud size={10} style={{ color: '#9ca3af', opacity: cloudCover > 20 ? 1 : 0.3 }} />
+                                                        <small
+                                                            className="text-white-50"
+                                                            style={{
+                                                                fontSize: '0.6rem',
+                                                                color: '#9ca3af',
+                                                                opacity: cloudCover > 0 ? 1 : 0.3
+                                                            }}
+                                                        >
+                                                            {cloudCover}%
+                                                        </small>
+                                                    </div>
+
+                                                    {/* Precipitation probability (always show with icon) */}
+                                                    <div style={{ height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                                                        <Droplets size={10} style={{ color: '#9ca3af', opacity: precipProb > 0 ? 1 : 0.3 }} />
+                                                        <small
+                                                            className="text-white-50"
+                                                            style={{
+                                                                fontSize: '0.6rem',
+                                                                color: '#9ca3af',
+                                                                opacity: precipProb > 0 ? 1 : 0.3
+                                                            }}
+                                                        >
+                                                            {precipProb}%
+                                                        </small>
+                                                    </div>
                                                 </div>
                                             );
                                         })}

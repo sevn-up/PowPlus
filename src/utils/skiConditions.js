@@ -18,7 +18,7 @@ export const getSnowQuality = (temp, snowfall) => {
     } else if (temp <= -3) {
         return { quality: 'Good Snow', color: '#06b6d4', label: 'good', emoji: '🌨️' };
     } else if (temp <= 0) {
-        return { quality: 'Packed Snow', color: '#8b5cf6', label: 'packed', emoji: '🏔️' };
+        return { quality: 'Packed Snow', color: '#60a5fa', label: 'packed', emoji: '🏔️' };
     } else {
         return { quality: 'Wet Snow', color: '#6b7280', label: 'wet', emoji: '💧' };
     }
