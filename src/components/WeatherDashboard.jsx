@@ -836,16 +836,19 @@ const WeatherDashboard = () => {
                                                                         <div className="mb-2" style={{ minHeight: '28px' }}>
                                                                             {windSpeed > 0 && (
                                                                                 <div
-                                                                                    className="d-flex align-items-center gap-1 px-2 py-1 rounded-pill"
+                                                                                    className="d-flex align-items-center rounded-pill"
                                                                                     style={{
                                                                                         backgroundColor: `${getWindColor(windSpeed)}20`,
                                                                                         border: `1px solid ${getWindColor(windSpeed)}40`,
-                                                                                        fontSize: '0.65rem'
+                                                                                        fontSize: '0.6rem',
+                                                                                        padding: '2px 6px',
+                                                                                        gap: '3px',
+                                                                                        whiteSpace: 'nowrap'
                                                                                     }}
                                                                                 >
-                                                                                    <Wind size={12} style={{ color: getWindColor(windSpeed) }} />
+                                                                                    <Wind size={11} style={{ color: getWindColor(windSpeed) }} />
                                                                                     <span className="fw-medium" style={{ color: getWindColor(windSpeed) }}>
-                                                                                        {windSpeed}
+                                                                                        {windSpeed} {getWindDirection(windDir)}
                                                                                     </span>
                                                                                 </div>
                                                                             )}
