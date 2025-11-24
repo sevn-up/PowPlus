@@ -8,6 +8,7 @@ import { locations, getLocationByName, getResorts, getBackcountryZones } from '.
 import AvalancheDetailModal from './AvalancheDetailModal';
 import AnimatedBackground from './AnimatedBackground';
 import MapCard from './MapCard';
+import HourlyDetailModal from './HourlyDetailModal';
 import { getWeatherIcon, getWindColor } from '../utils/weatherIcons.jsx';
 import { getSnowQuality, getVisibilityRating, getFreezingLevelWarning, getTemperatureColor, formatWindDirection } from '../utils/skiConditions';
 
@@ -28,6 +29,8 @@ const WeatherDashboard = () => {
     const [showSidebar, setShowSidebar] = useState(false);
     const [forecastView, setForecastView] = useState('10day'); // '3day' or '10day'
     const [isAnimating, setIsAnimating] = useState(false); // For smooth transitions
+    const [selectedHourIndex, setSelectedHourIndex] = useState(null); // For hourly detail modal
+    const [showHourlyModal, setShowHourlyModal] = useState(false);
 
     // Helper function to get UV index color
     const getUVColor = (index) => {
@@ -372,6 +375,10 @@ const WeatherDashboard = () => {
                                                             : ((isSunriseHour || isSunsetHour) ? '2px solid rgba(251, 191, 36, 0.5)' : 'none'),
                                                         transition: 'all 0.2s ease',
                                                         cursor: 'pointer'
+                                                    }}
+                                                    onClick={() => {
+                                                        setSelectedHourIndex(idx);
+                                                        setShowHourlyModal(true);
                                                     }}
                                                     onMouseEnter={(e) => {
                                                         e.currentTarget.style.transform = 'translateY(-4px)';
@@ -1135,7 +1142,40 @@ const WeatherDashboard = () => {
                     show={showAvalancheModal}
                     onHide={() => setShowAvalancheModal(false)}
                     forecast={avalancheForecast}
+                    location={currentLocation}
                 />
+
+                {/* Hourly Detail Modal */}
+                {weather && selectedHourIndex !== null && (
+                    <HourlyDetailModal
+                        show={showHourlyModal}
+                        onHide={() => {
+                            setShowHourlyModal(false);
+                            setSelectedHourIndex(null);
+                        }}
+                        hourData={{
+                            time: weather.hourly.time[selectedHourIndex],
+                            temperature_2m: weather.hourly.temperature_2m[selectedHourIndex],
+                            apparent_temperature: weather.hourly.apparent_temperature?.[selectedHourIndex],
+                            snowfall: weather.hourly.snowfall?.[selectedHourIndex] || 0,
+                            weather_code: weather.hourly.weather_code?.[selectedHourIndex] || 0,
+                            wind_speed_10m: weather.hourly.wind_speed_10m?.[selectedHourIndex],
+                            wind_gusts_10m: weather.hourly.wind_gusts_10m?.[selectedHourIndex],
+                            wind_direction_10m: weather.hourly.wind_direction_10m?.[selectedHourIndex],
+                            precipitation_probability: weather.hourly.precipitation_probability?.[selectedHourIndex],
+                            cloud_cover: weather.hourly.cloud_cover?.[selectedHourIndex],
+                            cloud_cover_low: weather.hourly.cloud_cover_low?.[selectedHourIndex],
+                            cloud_cover_mid: weather.hourly.cloud_cover_mid?.[selectedHourIndex],
+                            cloud_cover_high: weather.hourly.cloud_cover_high?.[selectedHourIndex],
+                            visibility: weather.hourly.visibility?.[selectedHourIndex],
+                            surface_pressure: weather.hourly.surface_pressure?.[selectedHourIndex],
+                            relativehumidity_2m: weather.hourly.relativehumidity_2m?.[selectedHourIndex],
+                            dewpoint_2m: weather.hourly.dewpoint_2m?.[selectedHourIndex],
+                        }}
+                        hourIndex={selectedHourIndex}
+                        elevation={weather.elevation || 2000}
+                    />
+                )}
             </div>
         </>
     );
