@@ -306,19 +306,88 @@ const WeatherDashboard = () => {
                                     <div className="d-flex align-items-center gap-2 mb-3 text-white-50 text-uppercase fw-bold small">
                                         <Calendar size={16} /> Hourly Forecast
                                     </div>
-                                    <div className="d-flex gap-4 overflow-auto pb-2 scrollbar-hide">
-                                        {weather.hourly.time.slice(0, 24).map((time, idx) => (
-                                            <div key={idx} className="d-flex flex-column align-items-center gap-2" style={{ minWidth: '60px' }}>
-                                                <small className="text-white-50 fw-medium">{new Date(time).getHours() === new Date().getHours() ? 'Now' : new Date(time).getHours()}</small>
-                                                <div style={{ height: '32px' }} className="d-flex align-items-center">
-                                                    {weather.hourly.snowfall[idx] > 0 ? <Snowflake size={24} className="text-white drop-shadow-md" /> : <Sun size={24} className="text-warning drop-shadow-md" />}
+                                    <div className="d-flex gap-3 overflow-auto pb-2 scrollbar-hide">
+                                        {weather.hourly.time.slice(0, 24).map((time, idx) => {
+                                            const hourTime = new Date(time);
+                                            const currentHour = hourTime.getHours();
+                                            const isNow = currentHour === new Date().getHours();
+
+                                            // Check if this hour contains sunrise or sunset
+                                            const sunrise = weather.daily.sunrise ? new Date(weather.daily.sunrise[0]) : null;
+                                            const sunset = weather.daily.sunset ? new Date(weather.daily.sunset[0]) : null;
+                                            const isSunriseHour = sunrise && sunrise.getHours() === currentHour;
+                                            const isSunsetHour = sunset && sunset.getHours() === currentHour;
+
+                                            // Get weather data for this hour
+                                            const temp = Math.round(weather.hourly.temperature_2m[idx]);
+                                            const snow = weather.hourly.snowfall[idx];
+                                            const weatherCode = weather.hourly.weather_code ? weather.hourly.weather_code[idx] : 0;
+                                            const windSpeed = weather.hourly.wind_speed_10m ? Math.round(weather.hourly.wind_speed_10m[idx]) : 0;
+                                            const precipProb = weather.hourly.precipitation_probability ? weather.hourly.precipitation_probability[idx] : 0;
+
+                                            return (
+                                                <div key={idx} className="d-flex flex-column align-items-center gap-2" style={{ minWidth: '75px' }}>
+                                                    {/* Hour label */}
+                                                    <small className="text-white-50 fw-medium">
+                                                        {isNow ? 'Now' : currentHour}
+                                                    </small>
+
+                                                    {/* Sunrise/Sunset indicator */}
+                                                    {(isSunriseHour || isSunsetHour) && (
+                                                        <div style={{ height: '16px', fontSize: '0.85rem' }}>
+                                                            {isSunriseHour ? '🌅' : '🌇'}
+                                                        </div>
+                                                    )}
+                                                    {!isSunriseHour && !isSunsetHour && <div style={{ height: '16px' }}></div>}
+
+                                                    {/* Weather icon */}
+                                                    <div style={{ height: '32px' }} className="d-flex align-items-center">
+                                                        {getWeatherIcon(weatherCode, 28)}
+                                                    </div>
+
+                                                    {/* Temperature */}
+                                                    <span className="fw-bold fs-5 text-shadow-sm">{temp}°</span>
+
+                                                    {/* Snowfall badge */}
+                                                    <div style={{ minHeight: '24px' }}>
+                                                        {snow > 0 && (
+                                                            <span className="badge bg-info bg-opacity-25 text-info rounded-pill shadow-sm" style={{ fontSize: '0.7rem' }}>
+                                                                {snow}cm
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Wind badge (only if significant) */}
+                                                    <div style={{ minHeight: '22px' }}>
+                                                        {windSpeed >= 20 && (
+                                                            <div
+                                                                className="d-flex align-items-center rounded-pill"
+                                                                style={{
+                                                                    backgroundColor: `${getWindColor(windSpeed)}20`,
+                                                                    border: `1px solid ${getWindColor(windSpeed)}40`,
+                                                                    fontSize: '0.6rem',
+                                                                    padding: '2px 5px',
+                                                                    gap: '2px',
+                                                                    whiteSpace: 'nowrap'
+                                                                }}
+                                                            >
+                                                                <Wind size={10} style={{ color: getWindColor(windSpeed) }} />
+                                                                <span className="fw-medium" style={{ color: getWindColor(windSpeed) }}>
+                                                                    {windSpeed}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Precipitation probability */}
+                                                    {precipProb > 0 && (
+                                                        <small className="text-white-50" style={{ fontSize: '0.65rem' }}>
+                                                            {precipProb}%
+                                                        </small>
+                                                    )}
                                                 </div>
-                                                <span className="fw-bold fs-5 text-shadow-sm">{Math.round(weather.hourly.temperature_2m[idx])}°</span>
-                                                {weather.hourly.snowfall[idx] > 0 && (
-                                                    <span className="badge bg-info bg-opacity-25 text-info rounded-pill shadow-sm">{weather.hourly.snowfall[idx]}cm</span>
-                                                )}
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </Card.Body>
                             </Card>
