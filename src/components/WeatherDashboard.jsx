@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Form, Button, Navbar, Nav, Offcanvas, Badge, Alert } from 'react-bootstrap';
-import { Search, Snowflake, Wind, Thermometer, Mountain, MapPin, Calendar, Droplets, Sun, Menu, Eye, Ruler, AlertTriangle, TrendingUp, CloudSnow, Sunrise, Sunset } from 'lucide-react';
+import { Search, Snowflake, Wind, Thermometer, Mountain, MapPin, Calendar, Droplets, Sun, Menu, Eye, Ruler, AlertTriangle, TrendingUp, CloudSnow, Sunrise, Sunset, Cloud, CloudRain, CloudDrizzle, CloudFog, Zap } from 'lucide-react';
 import { getCoordinates, getWeather, getWeatherDescription } from '../services/weatherApi';
 import { getClosestAvalancheForecast, parseDangerRating, formatHighlights } from '../services/avalancheApi';
 import { calculatePowderScore, calculateSnowfallTotal, getBestSkiingWindow } from '../services/powderTracker';
@@ -24,6 +24,40 @@ const WeatherDashboard = () => {
     const allLocations = locations.map(loc => loc.name);
     const [savedLocations] = useState(allLocations);
     const [showSidebar, setShowSidebar] = useState(false);
+
+    // Helper function to get weather icon based on WMO code
+    const getWeatherIcon = (code, size = 20) => {
+        const iconProps = { size, className: "drop-shadow-md" };
+        if (code === 0) return <Sun {...iconProps} className="text-warning drop-shadow-md" />;
+        if (code === 1) return <Sun {...iconProps} className="text-warning opacity-75 drop-shadow-md" />;
+        if (code === 2) return <Cloud {...iconProps} className="text-white-50 drop-shadow-md" />;
+        if (code === 3) return <Cloud {...iconProps} className="text-white drop-shadow-md" />;
+        if (code >= 45 && code <= 48) return <CloudFog {...iconProps} className="text-white-50 drop-shadow-md" />;
+        if (code >= 51 && code <= 57) return <CloudDrizzle {...iconProps} className="text-info drop-shadow-md" />;
+        if (code >= 61 && code <= 67) return <CloudRain {...iconProps} className="text-info drop-shadow-md" />;
+        if (code >= 71 && code <= 77) return <Snowflake {...iconProps} className="text-white drop-shadow-md" />;
+        if (code >= 80 && code <= 82) return <CloudRain {...iconProps} className="text-info drop-shadow-md" />;
+        if (code >= 85 && code <= 86) return <CloudSnow {...iconProps} className="text-white drop-shadow-md" />;
+        if (code >= 95 && code <= 99) return <Zap {...iconProps} className="text-warning drop-shadow-md" />;
+        return <Sun {...iconProps} className="text-warning opacity-50 drop-shadow-md" />;
+    };
+
+    // Helper function to get wind speed color
+    const getWindColor = (speed) => {
+        if (speed < 20) return '#10b981'; // Green - Calm
+        if (speed < 40) return '#fbbf24'; // Yellow - Breezy
+        if (speed < 60) return '#f97316'; // Orange - Windy
+        return '#ef4444'; // Red - Very windy
+    };
+
+    // Helper function to get UV index color
+    const getUVColor = (index) => {
+        if (index < 3) return '#10b981'; // Low - Green
+        if (index < 6) return '#fbbf24'; // Moderate - Yellow
+        if (index < 8) return '#f97316'; // High - Orange
+        if (index < 11) return '#ef4444'; // Very High - Red
+        return '#a855f7'; // Extreme - Purple
+    };
 
     const fetchWeather = async (townName) => {
         setLoading(true);
@@ -606,25 +640,69 @@ const WeatherDashboard = () => {
                                                         const minTemp = Math.round(weather.daily.temperature_2m_min[idx]);
                                                         const snow = weather.daily.snowfall_sum ? weather.daily.snowfall_sum[idx] : 0;
                                                         const precip = weather.daily.precipitation_probability_max ? weather.daily.precipitation_probability_max[idx] : 0;
+                                                        const windSpeed = weather.daily.wind_speed_10m_max ? Math.round(weather.daily.wind_speed_10m_max[idx]) : 0;
+                                                        const weatherCode = weather.daily.weather_code ? weather.daily.weather_code[idx] : 0;
+                                                        const uvIndex = weather.daily.uv_index_max ? Math.round(weather.daily.uv_index_max[idx]) : 0;
 
                                                         return (
                                                             <div key={idx} className="d-flex align-items-center justify-content-between p-3 rounded-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
                                                                 <span className="fw-bold text-white" style={{ width: '80px' }}>{dayName}</span>
+
                                                                 <div className="d-flex align-items-center gap-3 flex-grow-1 justify-content-center">
-                                                                    {snow > 0 ? (
+                                                                    {/* Weather Icon */}
+                                                                    <div className="d-flex align-items-center">
+                                                                        {getWeatherIcon(weatherCode, 20)}
+                                                                    </div>
+
+                                                                    {/* Snowfall */}
+                                                                    {snow > 0 && (
                                                                         <div className="d-flex align-items-center gap-1 text-info">
-                                                                            <Snowflake size={16} />
+                                                                            <Snowflake size={14} />
                                                                             <small className="fw-bold">{snow.toFixed(1)} cm</small>
                                                                         </div>
-                                                                    ) : (
-                                                                        <Sun size={16} className="text-warning opacity-50" />
                                                                     )}
+
+                                                                    {/* Precipitation Probability */}
                                                                     {precip > 0 && (
-                                                                        <small className="text-white">{precip}%</small>
+                                                                        <small className="text-white-50">{precip}%</small>
+                                                                    )}
+
+                                                                    {/* Wind Speed Badge */}
+                                                                    {windSpeed > 0 && (
+                                                                        <div
+                                                                            className="d-flex align-items-center gap-1 px-2 py-1 rounded-pill"
+                                                                            style={{
+                                                                                backgroundColor: `${getWindColor(windSpeed)}20`,
+                                                                                border: `1px solid ${getWindColor(windSpeed)}40`
+                                                                            }}
+                                                                        >
+                                                                            <Wind size={12} style={{ color: getWindColor(windSpeed) }} />
+                                                                            <small className="fw-medium" style={{ color: getWindColor(windSpeed), fontSize: '0.7rem' }}>
+                                                                                {windSpeed}
+                                                                            </small>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* UV Index Badge */}
+                                                                    {uvIndex > 0 && (
+                                                                        <div
+                                                                            className="d-flex align-items-center gap-1 px-2 py-1 rounded-pill"
+                                                                            style={{
+                                                                                backgroundColor: `${getUVColor(uvIndex)}20`,
+                                                                                border: `1px solid ${getUVColor(uvIndex)}40`
+                                                                            }}
+                                                                        >
+                                                                            <Sun size={12} style={{ color: getUVColor(uvIndex) }} />
+                                                                            <small className="fw-medium" style={{ color: getUVColor(uvIndex), fontSize: '0.7rem' }}>
+                                                                                UV {uvIndex}
+                                                                            </small>
+                                                                        </div>
                                                                     )}
                                                                 </div>
+
+                                                                {/* Temperature Range */}
                                                                 <div className="d-flex align-items-center gap-3">
-                                                                    <small className="text-white">{minTemp}°</small>
+                                                                    <small className="text-white-50">{minTemp}°</small>
                                                                     <div className="rounded-pill" style={{ width: '60px', height: '4px', backgroundColor: 'rgba(255, 255, 255, 0.2)' }}>
                                                                         <div className="bg-gradient-to-r from-info to-warning h-100 rounded-pill" style={{ width: '60%', marginLeft: '20%' }}></div>
                                                                     </div>
