@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Form, Button, Navbar, Nav, Offcanvas, Badge, Alert } from 'react-bootstrap';
-import { Search, Snowflake, Wind, Thermometer, Mountain, MapPin, Calendar, Droplets, Sun, Menu, Eye, Ruler, AlertTriangle, TrendingUp, CloudSnow, Sunrise, Sunset, Cloud, CloudRain, CloudDrizzle, CloudFog, Zap } from 'lucide-react';
+import { Search, Snowflake, Wind, Thermometer, Mountain, MapPin, Calendar, Droplets, Sun, Menu, Eye, Ruler, AlertTriangle, TrendingUp, CloudSnow, Sunrise, Sunset, Cloud, CloudRain, CloudDrizzle, CloudFog, Zap, ArrowUp, Navigation } from 'lucide-react';
 import { getCoordinates, getWeather, getWeatherDescription } from '../services/weatherApi';
 import { getClosestAvalancheForecast, parseDangerRating, formatHighlights } from '../services/avalancheApi';
 import { calculatePowderScore, calculateSnowfallTotal, getBestSkiingWindow } from '../services/powderTracker';
@@ -8,6 +8,9 @@ import { locations, getLocationByName, getResorts, getBackcountryZones } from '.
 import AvalancheDetailModal from './AvalancheDetailModal';
 import AnimatedBackground from './AnimatedBackground';
 import MapCard from './MapCard';
+import HourlyDetailModal from './HourlyDetailModal';
+import { getWeatherIcon, getWindColor } from '../utils/weatherIcons.jsx';
+import { getSnowQuality, getVisibilityRating, getFreezingLevelWarning, getTemperatureColor, formatWindDirection } from '../utils/skiConditions';
 
 const WeatherDashboard = () => {
     const [town, setTown] = useState('Whistler');
@@ -26,31 +29,8 @@ const WeatherDashboard = () => {
     const [showSidebar, setShowSidebar] = useState(false);
     const [forecastView, setForecastView] = useState('10day'); // '3day' or '10day'
     const [isAnimating, setIsAnimating] = useState(false); // For smooth transitions
-
-    // Helper function to get weather icon based on WMO code
-    const getWeatherIcon = (code, size = 20) => {
-        const iconProps = { size, className: "drop-shadow-md" };
-        if (code === 0) return <Sun {...iconProps} className="text-warning drop-shadow-md" />;
-        if (code === 1) return <Sun {...iconProps} className="text-warning opacity-75 drop-shadow-md" />;
-        if (code === 2) return <Cloud {...iconProps} className="text-white-50 drop-shadow-md" />;
-        if (code === 3) return <Cloud {...iconProps} className="text-white drop-shadow-md" />;
-        if (code >= 45 && code <= 48) return <CloudFog {...iconProps} className="text-white-50 drop-shadow-md" />;
-        if (code >= 51 && code <= 57) return <CloudDrizzle {...iconProps} className="text-info drop-shadow-md" />;
-        if (code >= 61 && code <= 67) return <CloudRain {...iconProps} className="text-info drop-shadow-md" />;
-        if (code >= 71 && code <= 77) return <Snowflake {...iconProps} className="text-white drop-shadow-md" />;
-        if (code >= 80 && code <= 82) return <CloudRain {...iconProps} className="text-info drop-shadow-md" />;
-        if (code >= 85 && code <= 86) return <CloudSnow {...iconProps} className="text-white drop-shadow-md" />;
-        if (code >= 95 && code <= 99) return <Zap {...iconProps} className="text-warning drop-shadow-md" />;
-        return <Sun {...iconProps} className="text-warning opacity-50 drop-shadow-md" />;
-    };
-
-    // Helper function to get wind speed color
-    const getWindColor = (speed) => {
-        if (speed < 20) return '#10b981'; // Green - Calm
-        if (speed < 40) return '#fbbf24'; // Yellow - Breezy
-        if (speed < 60) return '#f97316'; // Orange - Windy
-        return '#ef4444'; // Red - Very windy
-    };
+    const [selectedHourIndex, setSelectedHourIndex] = useState(null); // For hourly detail modal
+    const [showHourlyModal, setShowHourlyModal] = useState(false);
 
     // Helper function to get UV index color
     const getUVColor = (index) => {
@@ -303,22 +283,244 @@ const WeatherDashboard = () => {
                             {/* Hourly Forecast Strip */}
                             <Card className="glass-card border-0 mb-4 text-white shadow-lg hover-scale transition-all">
                                 <Card.Body>
-                                    <div className="d-flex align-items-center gap-2 mb-3 text-white-50 text-uppercase fw-bold small">
-                                        <Calendar size={16} /> Hourly Forecast
+                                    <div className="d-flex align-items-center justify-content-between mb-2">
+                                        <div className="d-flex align-items-center gap-2 text-white-50 text-uppercase fw-bold small">
+                                            <Calendar size={16} /> Hourly Forecast
+                                        </div>
+                                        <small className="text-white-50 fst-italic" style={{ fontSize: '0.65rem' }}>
+                                            Next 24 hours
+                                        </small>
                                     </div>
-                                    <div className="d-flex gap-4 overflow-auto pb-2 scrollbar-hide">
-                                        {weather.hourly.time.slice(0, 24).map((time, idx) => (
-                                            <div key={idx} className="d-flex flex-column align-items-center gap-2" style={{ minWidth: '60px' }}>
-                                                <small className="text-white-50 fw-medium">{new Date(time).getHours() === new Date().getHours() ? 'Now' : new Date(time).getHours()}</small>
-                                                <div style={{ height: '32px' }} className="d-flex align-items-center">
-                                                    {weather.hourly.snowfall[idx] > 0 ? <Snowflake size={24} className="text-white drop-shadow-md" /> : <Sun size={24} className="text-warning drop-shadow-md" />}
-                                                </div>
-                                                <span className="fw-bold fs-5 text-shadow-sm">{Math.round(weather.hourly.temperature_2m[idx])}°</span>
-                                                {weather.hourly.snowfall[idx] > 0 && (
-                                                    <span className="badge bg-info bg-opacity-25 text-info rounded-pill shadow-sm">{weather.hourly.snowfall[idx]}cm</span>
-                                                )}
+
+                                    {/* Compact Legend */}
+                                    <div className="mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+                                        <div className="d-flex flex-wrap gap-3 align-items-center" style={{ fontSize: '0.65rem' }}>
+                                            <div className="d-flex align-items-center gap-1 text-white-50">
+                                                <Thermometer size={12} />
+                                                <span>Temp</span>
                                             </div>
-                                        ))}
+                                            <div className="d-flex align-items-center gap-1 text-white-50">
+                                                <Snowflake size={12} />
+                                                <span>Snow</span>
+                                            </div>
+                                            <div className="d-flex align-items-center gap-1 text-white-50">
+                                                <Wind size={12} />
+                                                <span>Wind</span>
+                                            </div>
+                                            <div className="d-flex align-items-center gap-1 text-white-50">
+                                                <Eye size={12} />
+                                                <span>Visibility</span>
+                                            </div>
+                                            <div className="d-flex align-items-center gap-1 text-white-50">
+                                                <Cloud size={12} />
+                                                <span>Clouds</span>
+                                            </div>
+                                            <div className="d-flex align-items-center gap-1 text-white-50">
+                                                <Droplets size={12} />
+                                                <span>Precip %</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="d-flex gap-3 overflow-auto pb-2 scrollbar-hide">
+                                        {weather.hourly.time.slice(0, 24).map((time, idx) => {
+                                            const hourTime = new Date(time);
+                                            const currentHour = hourTime.getHours();
+                                            const isNow = idx === 0;
+
+                                            // Check if this hour contains sunrise or sunset
+                                            const sunrise = weather.daily.sunrise ? new Date(weather.daily.sunrise[0]) : null;
+                                            const sunset = weather.daily.sunset ? new Date(weather.daily.sunset[0]) : null;
+                                            const isSunriseHour = sunrise && sunrise.getHours() === currentHour;
+                                            const isSunsetHour = sunset && sunset.getHours() === currentHour;
+
+                                            // Get weather data for this hour
+                                            const temp = Math.round(weather.hourly.temperature_2m[idx]);
+                                            const feelsLike = weather.hourly.apparent_temperature ? Math.round(weather.hourly.apparent_temperature[idx]) : temp;
+                                            const tempDiff = Math.abs(temp - feelsLike);
+                                            const snow = weather.hourly.snowfall[idx];
+                                            const weatherCode = weather.hourly.weather_code ? weather.hourly.weather_code[idx] : 0;
+                                            const windSpeed = weather.hourly.wind_speed_10m ? Math.round(weather.hourly.wind_speed_10m[idx]) : 0;
+                                            const windDirection = weather.hourly.wind_direction_10m ? weather.hourly.wind_direction_10m[idx] : 0;
+                                            const precipProb = weather.hourly.precipitation_probability ? weather.hourly.precipitation_probability[idx] : 0;
+                                            const visibility = weather.hourly.visibility ? weather.hourly.visibility[idx] : 10000;
+                                            const cloudCover = weather.hourly.cloud_cover ? weather.hourly.cloud_cover[idx] : 0;
+                                            const freezingLevel = weather.hourly.freezing_level_height ? weather.hourly.freezing_level_height[idx] : 2000;
+                                            const isDay = weather.hourly.is_day ? weather.hourly.is_day[idx] : 1;
+
+                                            // Calculate enhanced metrics
+                                            const snowQuality = getSnowQuality(temp, snow);
+                                            const visibilityInfo = getVisibilityRating(visibility);
+                                            const tempColor = getTemperatureColor(temp);
+
+                                            // Only show freezing level warning if it's relevant (near elevation or precipitation expected)
+                                            const elevation = weather.elevation || 2000;
+                                            const freezingWarning = precipProb > 30 ? getFreezingLevelWarning(freezingLevel, elevation) : null;
+
+                                            return (
+                                                <div
+                                                    key={idx}
+                                                    className="d-flex flex-column align-items-center gap-2 position-relative"
+                                                    style={{
+                                                        minWidth: '85px',
+                                                        padding: '0.75rem 0.5rem',
+                                                        borderRadius: '1rem',
+                                                        background: (isSunriseHour || isSunsetHour)
+                                                            ? 'linear-gradient(180deg, rgba(251, 191, 36, 0.15) 0%, rgba(0, 0, 0, 0) 100%)'
+                                                            : (isDay
+                                                                ? 'linear-gradient(180deg, rgba(135, 206, 235, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)'
+                                                                : 'linear-gradient(180deg, rgba(25, 25, 112, 0.15) 0%, rgba(0, 0, 0, 0.1) 100%)'),
+                                                        border: isNow
+                                                            ? '2px solid rgba(59, 130, 246, 0.5)'
+                                                            : ((isSunriseHour || isSunsetHour) ? '2px solid rgba(251, 191, 36, 0.5)' : 'none'),
+                                                        transition: 'all 0.2s ease',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    onClick={() => {
+                                                        setSelectedHourIndex(idx);
+                                                        setShowHourlyModal(true);
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.transform = 'translateY(-4px)';
+                                                        e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.3)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.transform = 'translateY(0)';
+                                                        e.currentTarget.style.boxShadow = 'none';
+                                                    }}
+                                                >
+                                                    {/* Hour label */}
+                                                    {/* Hour label with sunrise/sunset inline */}
+                                                    {/* Hour label */}
+                                                    <div style={{ minHeight: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <small
+                                                            className="fw-bold"
+                                                            style={{
+                                                                color: isNow ? '#3b82f6' : ((isSunriseHour || isSunsetHour) ? '#fbbf24' : '#fff'),
+                                                                fontSize: '0.75rem'
+                                                            }}
+                                                        >
+                                                            {isNow ? 'Now' : currentHour}
+                                                        </small>
+                                                    </div>
+
+                                                    {/* Weather icon - show snowflake if snowing */}
+                                                    <div style={{ height: '36px' }} className="d-flex align-items-center">
+                                                        {snow > 0 ? (
+                                                            <Snowflake size={32} className="text-info" style={{ filter: 'drop-shadow(0 0 2px rgba(59, 130, 246, 0.5))' }} />
+                                                        ) : (
+                                                            getWeatherIcon(weatherCode, 32)
+                                                        )}
+                                                    </div>
+
+                                                    {/* Temperature with color coding */}
+                                                    <span
+                                                        className="fw-bold text-shadow-sm"
+                                                        style={{
+                                                            fontSize: '1.1rem',
+                                                            color: tempColor
+                                                        }}
+                                                    >
+                                                        {temp}°
+                                                    </span>
+
+                                                    {/* Feels-like (always show with icon) */}
+                                                    <div style={{ height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
+                                                        <Thermometer size={10} style={{ color: tempDiff >= 3 ? '#fbbf24' : '#9ca3af', opacity: 0.7 }} />
+                                                        <small
+                                                            className="text-white-50"
+                                                            style={{
+                                                                fontSize: '0.6rem',
+                                                                color: tempDiff >= 3 ? '#fbbf24' : '#9ca3af',
+                                                                fontWeight: tempDiff >= 3 ? 'bold' : 'normal'
+                                                            }}
+                                                        >
+                                                            {feelsLike}°
+                                                        </small>
+                                                    </div>
+
+                                                    {/* Snowfall (always show with icon) */}
+                                                    <div style={{ height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                                                        <Snowflake size={10} style={{ color: snow > 0 ? snowQuality.color : '#9ca3af', opacity: snow > 0 ? 1 : 0.3 }} />
+                                                        {snow > 0 ? (
+                                                            <span
+                                                                className="fw-bold"
+                                                                style={{
+                                                                    fontSize: '0.65rem',
+                                                                    color: snowQuality.color
+                                                                }}
+                                                            >
+                                                                {snow.toFixed(1)}cm
+                                                            </span>
+                                                        ) : (
+                                                            <small className="text-white-50" style={{ fontSize: '0.6rem', opacity: 0.3 }}>
+                                                                0cm
+                                                            </small>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Visibility (always show with icon) */}
+                                                    <div style={{ height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                                                        <Eye size={10} style={{ color: visibilityInfo.warning ? visibilityInfo.color : '#9ca3af', opacity: visibilityInfo.warning ? 1 : 0.5 }} />
+                                                        <small
+                                                            className="text-white-50"
+                                                            style={{
+                                                                fontSize: '0.6rem',
+                                                                color: visibilityInfo.warning ? visibilityInfo.color : '#9ca3af',
+                                                                fontWeight: visibilityInfo.warning ? 'bold' : 'normal'
+                                                            }}
+                                                        >
+                                                            {visibilityInfo.distance}km
+                                                        </small>
+                                                    </div>
+
+                                                    {/* Wind (always show with direction) */}
+                                                    <div style={{ height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                                                        <Wind size={10} style={{ color: windSpeed >= 20 ? getWindColor(windSpeed) : '#9ca3af', opacity: windSpeed >= 20 ? 1 : 0.5 }} />
+                                                        <small
+                                                            className="text-white-50"
+                                                            style={{
+                                                                fontSize: '0.6rem',
+                                                                color: windSpeed >= 20 ? getWindColor(windSpeed) : '#9ca3af',
+                                                                fontWeight: windSpeed >= 20 ? 'bold' : 'normal'
+                                                            }}
+                                                        >
+                                                            {windSpeed} {formatWindDirection(windDirection).name}
+                                                        </small>
+                                                    </div>
+
+                                                    {/* Cloud cover (always show with icon) */}
+                                                    <div style={{ height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                                                        <Cloud size={10} style={{ color: '#9ca3af', opacity: cloudCover > 20 ? 1 : 0.3 }} />
+                                                        <small
+                                                            className="text-white-50"
+                                                            style={{
+                                                                fontSize: '0.6rem',
+                                                                color: '#9ca3af',
+                                                                opacity: cloudCover > 0 ? 1 : 0.3
+                                                            }}
+                                                        >
+                                                            {cloudCover}%
+                                                        </small>
+                                                    </div>
+
+                                                    {/* Precipitation probability (always show with icon) */}
+                                                    <div style={{ height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                                                        <Droplets size={10} style={{ color: '#9ca3af', opacity: precipProb > 0 ? 1 : 0.3 }} />
+                                                        <small
+                                                            className="text-white-50"
+                                                            style={{
+                                                                fontSize: '0.6rem',
+                                                                color: '#9ca3af',
+                                                                opacity: precipProb > 0 ? 1 : 0.3
+                                                            }}
+                                                        >
+                                                            {precipProb}%
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </Card.Body>
                             </Card>
@@ -940,7 +1142,40 @@ const WeatherDashboard = () => {
                     show={showAvalancheModal}
                     onHide={() => setShowAvalancheModal(false)}
                     forecast={avalancheForecast}
+                    location={currentLocation}
                 />
+
+                {/* Hourly Detail Modal */}
+                {weather && selectedHourIndex !== null && (
+                    <HourlyDetailModal
+                        show={showHourlyModal}
+                        onHide={() => {
+                            setShowHourlyModal(false);
+                            setSelectedHourIndex(null);
+                        }}
+                        hourData={{
+                            time: weather.hourly.time[selectedHourIndex],
+                            temperature_2m: weather.hourly.temperature_2m[selectedHourIndex],
+                            apparent_temperature: weather.hourly.apparent_temperature?.[selectedHourIndex],
+                            snowfall: weather.hourly.snowfall?.[selectedHourIndex] || 0,
+                            weather_code: weather.hourly.weather_code?.[selectedHourIndex] || 0,
+                            wind_speed_10m: weather.hourly.wind_speed_10m?.[selectedHourIndex],
+                            wind_gusts_10m: weather.hourly.wind_gusts_10m?.[selectedHourIndex],
+                            wind_direction_10m: weather.hourly.wind_direction_10m?.[selectedHourIndex],
+                            precipitation_probability: weather.hourly.precipitation_probability?.[selectedHourIndex],
+                            cloud_cover: weather.hourly.cloud_cover?.[selectedHourIndex],
+                            cloud_cover_low: weather.hourly.cloud_cover_low?.[selectedHourIndex],
+                            cloud_cover_mid: weather.hourly.cloud_cover_mid?.[selectedHourIndex],
+                            cloud_cover_high: weather.hourly.cloud_cover_high?.[selectedHourIndex],
+                            visibility: weather.hourly.visibility?.[selectedHourIndex],
+                            surface_pressure: weather.hourly.surface_pressure?.[selectedHourIndex],
+                            relativehumidity_2m: weather.hourly.relativehumidity_2m?.[selectedHourIndex],
+                            dewpoint_2m: weather.hourly.dewpoint_2m?.[selectedHourIndex],
+                        }}
+                        hourIndex={selectedHourIndex}
+                        elevation={weather.elevation || 2000}
+                    />
+                )}
             </div>
         </>
     );

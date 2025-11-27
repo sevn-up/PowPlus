@@ -20,11 +20,10 @@ export const getWeather = async (lat, lon) => {
         latitude: lat,
         longitude: lon,
         current: 'temperature_2m,weather_code,snowfall,wind_speed_10m,wind_direction_10m',
-        hourly: 'temperature_2m,snowfall,freezing_level_height,snow_depth,visibility,wind_gusts_10m,wind_speed_10m,wind_direction_10m,precipitation_probability,cloud_cover,surface_pressure,is_day',
+        hourly: 'temperature_2m,apparent_temperature,snowfall,freezing_level_height,snow_depth,visibility,wind_gusts_10m,wind_speed_10m,wind_direction_10m,precipitation_probability,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,surface_pressure,is_day,weather_code,relativehumidity_2m,dewpoint_2m,precipitation',
         daily: 'temperature_2m_max,temperature_2m_min,snowfall_sum,precipitation_probability_max,sunrise,sunset,wind_speed_10m_max,wind_direction_10m_dominant,weather_code,uv_index_max,sunshine_duration',
         timezone: 'auto',
-        forecast_days: 10,
-        past_days: 7
+        forecast_days: 10
     });
 
     const response = await fetch(`${WEATHER_URL}?${params.toString()}`);
