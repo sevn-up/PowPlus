@@ -15,11 +15,21 @@ export const getDriveBCEvents = async (bounds = null, limit = 500) => {
             url += `&bbox=${bounds.west},${bounds.south},${bounds.east},${bounds.north}`;
         }
 
+        console.log('DriveBC API call:', url);
         const response = await fetch(url);
-        if (!response.ok) throw new Error('Failed to fetch DriveBC events');
+
+        if (!response.ok) {
+            console.error('DriveBC API error:', response.status, response.statusText);
+            throw new Error('Failed to fetch DriveBC events');
+        }
 
         const data = await response.json();
-        return data.events || [];
+        console.log('DriveBC API response:', data);
+
+        // The response structure has events nested under 'events' key
+        const events = data.events || [];
+        console.log(`DriveBC parsed ${events.length} events from response`);
+        return events;
     } catch (error) {
         console.error('DriveBC API error:', error);
         return [];

@@ -1,105 +1,159 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { Card, Badge, Spinner, Form } from 'react-bootstrap';
+import React, { useRef, useState, useEffect } from 'react';
+import { Card, Badge, Form } from 'react-bootstrap';
 import { MapPin, Layers, AlertTriangle, Mountain } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMap, LayersControl } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 import './MapCard.css';
+
+import { MAPBOX_TOKEN, MAP_STYLES, AVALANCHE_COLORS } from '../config/mapbox';
 import { getAvalancheForecastAreas, getAvalancheForecastProducts, parseDangerRating } from '../services/avalancheApi';
-import { getDriveBCEvents, parseEventType, parseSeverity, getRoadNames, getRoadSegment, prioritizeEvents, getNextUpdate } from '../services/mapApi';
-import { getTerrainLayerConfig } from '../services/terrainLayers';
+import { getDriveBCEvents, parseEventType, prioritizeEvents } from '../services/mapApi';
 import RoadEventModal from './RoadEventModal';
 
-// Fix for default marker icons in bundlers
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
-
-// Component to handle map center updates
-const MapUpdater = ({ center }) => {
-    const map = useMap();
-
-    useEffect(() => {
-        if (center) {
-            map.setView(center, map.getZoom());
-        }
-    }, [center, map]);
-
-    return null;
-};
-
-// Create custom icon for road events - Moved outside component to prevent recreation
-const createEventIcon = (eventType, description = '') => {
-    const typeInfo = parseEventType(eventType, description);
-
-    return L.divIcon({
-        className: 'custom-event-marker',
-        html: `
-            <div style="
-                background-color: ${typeInfo.color};
-                width: 32px;
-                height: 32px;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 18px;
-                border: 2px solid white;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            ">
-                ${typeInfo.icon}
-            </div>
-        `,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
-        popupAnchor: [0, -16]
-    });
-};
-
-// Icon cache to prevent recreation - MEMORY LEAK FIX
-// Cache key combines eventType and description for unique icons
-const eventIconCache = new Map();
-
-const getEventIcon = (eventType, description = '') => {
-    // Create cache key from type and truncated description (first 50 chars to keep cache manageable)
-    const cacheKey = `${eventType}:${description.substring(0, 50)}`;
-    if (!eventIconCache.has(cacheKey)) {
-        eventIconCache.set(cacheKey, createEventIcon(eventType, description));
-    }
-    return eventIconCache.get(cacheKey);
-};
-
+/**
+ * MapCard Component - Native Mapbox GL Implementation
+ * Direct mapbox-gl usage (no React wrapper) for maximum compatibility
+ * 
+ * Features:
+ * - WebGL vector tile rendering
+ * - Avalanche forecast layers with color-coded danger ratings
+ * - Road event markers from DriveBC
+ * - 3D terrain visualization toggle
+ * - Optimized performance (30min refresh vs 10min)
+ */
 const MapCard = ({ location, coordinates, avalancheForecast }) => {
-    const [isLoading, setIsLoading] = useState(true);
-    const [avalancheAreas, setAvalancheAreas] = useState(null);
-    const [avalancheProducts, setAvalancheProducts] = useState(null);
+    const mapContainer = useRef(null);
+    const map = useRef(null);
+
+    // Layer toggles - avalanche and roads ON by default
     const [showAvalancheLayer, setShowAvalancheLayer] = useState(true);
-    const [driveBCEvents, setDriveBCEvents] = useState([]);
     const [showRoadEventsLayer, setShowRoadEventsLayer] = useState(true);
     const [showTerrainLayer, setShowTerrainLayer] = useState(false);
-    const [showRoadEventModal, setShowRoadEventModal] = useState(false);
-    const [selectedRoadEvent, setSelectedRoadEvent] = useState(null);
-    const mapRef = useRef(null);
 
-    // Default to Whistler if no coordinates provided
-    const center = useMemo(() => coordinates
-        ? [coordinates.lat, coordinates.lon]
-        : [50.1163, -122.9574], [coordinates]);
+    // Data states
+    const [avalancheAreas, setAvalancheAreas] = useState(null);
+    const [avalancheProducts, setAvalancheProducts] = useState(null);
+    const [driveBCEvents, setDriveBCEvents] = useState([]);
+    const [markers, setMarkers] = useState([]);
 
-    const locationName = location?.displayName || location?.name || 'Current Location';
+    // UI states
+    const [selectedEvent, setSelectedEvent] = useState(null);
+    const [showEventModal, setShowEventModal] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [mapError, setMapError] = useState(null);
 
-    // Fetch avalanche forecast areas
+    // Check for valid token
+    const hasToken = MAPBOX_TOKEN && MAPBOX_TOKEN !== 'PASTE_YOUR_TOKEN_HERE' && MAPBOX_TOKEN.startsWith('pk.');
+
+    // If no valid token, show error message instead of crashing
+    if (!hasToken) {
+        return (
+            <Card className="glass-card border-0 text-white shadow-lg">
+                <Card.Body>
+                    <div className="d-flex align-items-center justify-content-between mb-3">
+                        <div className="d-flex align-items-center gap-2 text-white-50 text-uppercase fw-bold small">
+                            <MapPin size={16} /> Interactive Map
+                        </div>
+                        <Badge bg="warning" className="d-flex align-items-center gap-1">
+                            <AlertTriangle size={12} />
+                            Setup Required
+                        </Badge>
+                    </div>
+
+                    <div className="map-container rounded-4 overflow-hidden p-5 text-center" style={{ height: '400px', background: 'rgba(255, 255, 255, 0.05)' }}>
+                        <AlertTriangle size={48} className="text-warning mb-3" />
+                        <h5 className="text-white mb-3">Mapbox Token Required</h5>
+                        <p className="text-white-50 mb-3">
+                            To display the interactive map, you need a free Mapbox access token.
+                        </p>
+                        <div className="text-start bg-dark bg-opacity-50 p-3 rounded">
+                            <small className="text-white-50">
+                                <strong className="text-info d-block mb-2">Quick Setup (2 minutes):</strong>
+                                1. Get FREE token: <a href="https://account.mapbox.com/access-tokens/" target="_blank" rel="noopener noreferrer" className="text-info">account.mapbox.com/access-tokens</a><br />
+                                2. Copy your "Default public token"<br />
+                                3. Paste in <code>.env</code> file: <code className="text-warning">VITE_MAPBOX_TOKEN=pk.your_token_here</code><br />
+                                4. Restart dev server: <code className="text-info">npm run dev</code>
+                            </small>
+                        </div>
+                    </div>
+                </Card.Body>
+            </Card>
+        );
+    }
+
+    // Initialize map
+    useEffect(() => {
+        if (map.current) return; // Initialize only once
+
+        mapboxgl.accessToken = MAPBOX_TOKEN;
+
+        map.current = new mapboxgl.Map({
+            container: mapContainer.current,
+            style: MAP_STYLES.outdoors,
+            center: [coordinates?.lon || -122.9574, coordinates?.lat || 50.1163],
+            zoom: 10,
+            pitch: 0,
+            bearing: 0,
+        });
+
+        // Add navigation controls
+        map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+        map.current.addControl(new mapboxgl.ScaleControl());
+
+        // Add location marker
+        new mapboxgl.Marker({ color: '#3b82f6' })
+            .setLngLat([coordinates?.lon || -122.9574, coordinates?.lat || 50.1163])
+            .setPopup(
+                new mapboxgl.Popup().setHTML(
+                    `<strong>${location?.displayName || location?.name || 'Location'}</strong><br/>
+           ${coordinates?.lat?.toFixed(4) || ''}°N, ${coordinates?.lon?.toFixed(4) || ''}°W`
+                )
+            )
+            .addTo(map.current);
+
+        map.current.on('load', () => {
+            setIsLoading(false);
+
+            // Add terrain source for 3D
+            map.current.addSource('mapbox-dem', {
+                type: 'raster-dem',
+                url: 'mapbox://mapbox.terrain-rgb',
+                tileSize: 512,
+                maxzoom: 14,
+            });
+        });
+
+        // Cleanup on unmount
+        return () => {
+            if (map.current) {
+                map.current.remove();
+                map.current = null;
+            }
+        };
+    }, []);
+
+    // Update map center when coordinates change
+    useEffect(() => {
+        if (map.current && coordinates) {
+            map.current.flyTo({
+                center: [coordinates.lon, coordinates.lat],
+                zoom: 10,
+                duration: 1500,
+            });
+        }
+    }, [coordinates]);
+
+    // Fetch avalanche data
     useEffect(() => {
         let isMounted = true;
+
         const fetchAvalancheData = async () => {
             try {
                 const [areas, products] = await Promise.all([
                     getAvalancheForecastAreas(),
-                    getAvalancheForecastProducts()
+                    getAvalancheForecastProducts(),
                 ]);
+
                 if (isMounted) {
                     setAvalancheAreas(areas);
                     setAvalancheProducts(products);
@@ -113,339 +167,261 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
         return () => { isMounted = false; };
     }, []);
 
-    // Fetch DriveBC road events - MEMORY LEAK FIX: Reduced frequency and event count
+    // Fetch road events (showing ALL events, no filtering)
     useEffect(() => {
         let isMounted = true;
+
         const fetchRoadEvents = async () => {
+            if (!isMounted) return;
+
             try {
-                // Fetch events within BC region (approximate bounds)
-                const bounds = {
-                    north: 60,
-                    south: 48,
-                    east: -114,
-                    west: -139
-                };
-                const events = await getDriveBCEvents(bounds, 500);
-                if (isMounted) {
-                    // Filter to show all current road conditions across BC (no limit)
-                    const roadConditions = prioritizeEvents(events, 500);
-                    setDriveBCEvents(roadConditions);
+                // Fetch province-wide events
+                const events = await getDriveBCEvents(null, 50);
+
+                if (isMounted && events.length > 0) {
+                    // DON'T filter - show ALL events (was filtering 50 → 2)
+                    setDriveBCEvents(events);
+                    console.log(`DriveBC: Loaded ${events.length} road events to map`);
+                } else {
+                    console.log(`DriveBC: No events available`);
+                    setDriveBCEvents([]);
                 }
             } catch (error) {
                 console.error('Failed to fetch DriveBC events:', error);
+                setDriveBCEvents([]);
             }
         };
 
         fetchRoadEvents();
-        // Refresh events every 10 minutes (reduced from 5 to minimize memory churn)
-        const interval = setInterval(fetchRoadEvents, 10 * 60 * 1000);
+        // Fetch once per hour
+        const interval = setInterval(fetchRoadEvents, 60 * 60 * 1000);
+
         return () => {
             clearInterval(interval);
             isMounted = false;
         };
     }, []);
 
+    // Add/remove avalanche layer  
     useEffect(() => {
-        // Simulate loading time for map tiles
-        const timer = setTimeout(() => setIsLoading(false), 500);
-        return () => clearTimeout(timer);
-    }, []);
+        if (!map.current || !map.current.loaded()) return;
+        if (!avalancheAreas || !avalancheProducts) return;
 
-    // Get danger rating for an area - Memoized via useCallback isn't strictly necessary for this helper,
-    // but good if passed down. Since it's used in render props, we'll keep it simple or wrap if needed.
-    // For now, it's used inside other callbacks.
+        const layerId = 'avalanche-areas';
+        const sourceId = 'avalanche-source';
 
-    const getDangerRatingForArea = useCallback((areaId) => {
-        if (!avalancheProducts) return null;
+        // Batch updates to prevent jank
+        const updateLayers = () => {
+            if (showAvalancheLayer) {
+                // Create rating map
+                const ratingMap = {};
+                avalancheProducts.forEach((product) => {
+                    if (product.area?.id && product.report?.dangerRatings?.[0]) {
+                        const alpineRating = product.report.dangerRatings[0].ratings?.alp?.rating?.value;
+                        const ratingInfo = parseDangerRating(alpineRating);
+                        ratingMap[product.area.id] = ratingInfo;
+                    }
+                });
 
-        const product = avalancheProducts.find(p => p.area?.id === areaId);
-        if (!product || !product.report?.dangerRatings?.[0]) return null;
+                // Add features with danger ratings
+                const enhancedAreas = {
+                    ...avalancheAreas,
+                    features: avalancheAreas.features.map((feature) => {
+                        const rating = ratingMap[feature.id];
+                        return {
+                            ...feature,
+                            properties: {
+                                ...feature.properties,
+                                color: rating?.color || '#9E9E9E',
+                                level: rating?.level || 'N/A',
+                            },
+                        };
+                    }),
+                };
 
-        // Get alpine rating as the primary indicator
-        const alpineRating = product.report.dangerRatings[0].ratings?.alp?.rating?.value;
-        return parseDangerRating(alpineRating);
-    }, [avalancheProducts]);
+                // Only add if doesn't exist
+                if (!map.current.getSource(sourceId)) {
+                    map.current.addSource(sourceId, {
+                        type: 'geojson',
+                        data: enhancedAreas,
+                    });
 
-    // Style function for avalanche polygons - Memoized
-    const avalancheStyle = useCallback((feature) => {
-        const areaId = feature.id;
-        const rating = getDangerRatingForArea(areaId);
+                    map.current.addLayer({
+                        id: layerId,
+                        type: 'fill',
+                        source: sourceId,
+                        paint: {
+                            'fill-color': ['get', 'color'],
+                            'fill-opacity': 0.3,
+                        },
+                        layout: {
+                            'visibility': 'visible'
+                        }
+                    });
 
-        return {
-            fillColor: rating?.color || '#9E9E9E',
-            weight: 2,
-            opacity: 0.8,
-            color: 'white',
-            fillOpacity: 0.3
+                    map.current.addLayer({
+                        id: `${layerId}-border`,
+                        type: 'line',
+                        source: sourceId,
+                        paint: {
+                            'line-color': '#ffffff',
+                            'line-width': 2,
+                            'line-opacity': 0.8,
+                        },
+                        layout: {
+                            'visibility': 'visible'
+                        }
+                    });
+                } else {
+                    // Update existing source
+                    map.current.getSource(sourceId).setData(enhancedAreas);
+                    // Make visible
+                    if (map.current.getLayer(layerId)) {
+                        map.current.setLayoutProperty(layerId, 'visibility', 'visible');
+                        map.current.setLayoutProperty(`${layerId}-border`, 'visibility', 'visible');
+                    }
+                }
+            } else {
+                // Hide layers instead of removing them
+                if (map.current.getLayer(layerId)) {
+                    map.current.setLayoutProperty(layerId, 'visibility', 'none');
+                    map.current.setLayoutProperty(`${layerId}-border`, 'visibility', 'none');
+                }
+            }
         };
-    }, [getDangerRatingForArea]);
 
-    // Popup content for avalanche areas - Memoized - MEMORY LEAK FIX: Added cleanup
-    const onEachAvalancheFeature = useCallback((feature, layer) => {
-        const areaId = feature.id;
-        const areaName = feature.properties?.name || 'Unknown Area';
+        // Small delay to batch updates and reduce jank
+        const timeout = setTimeout(updateLayers, 50);
+        return () => clearTimeout(timeout);
+    }, [showAvalancheLayer, avalancheAreas, avalancheProducts]);
 
-        // Get the full product for this area to access all danger ratings
-        const product = avalancheProducts?.find(p => p.area?.id === areaId);
-        const dangerRatings = product?.report?.dangerRatings?.[0]?.ratings;
+    // Add/remove road event markers with coordinate validation
+    useEffect(() => {
+        if (!map.current || !map.current.loaded()) return;
 
-        if (dangerRatings) {
-            const alpineRating = parseDangerRating(dangerRatings.alp?.rating?.value);
-            const treelineRating = parseDangerRating(dangerRatings.tln?.rating?.value);
-            const belowTreelineRating = parseDangerRating(dangerRatings.btl?.rating?.value);
+        // Clear existing markers first
+        markers.forEach(marker => marker.remove());
 
-            const popupContent = `
-                <div style="min-width: 250px; font-family: system-ui, -apple-system, sans-serif;">
-                    <strong style="font-size: 16px; color: #f5f5f5; display: block; margin-bottom: 12px;">${areaName}</strong>
-                    
-                    <div style="margin-bottom: 8px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                            <span style="font-size: 12px; color: #e0e0e0; font-weight: 600;">Alpine</span>
-                            <span style="font-size: 11px; color: #bbb;">2500m+</span>
-                        </div>
-                        <div style="padding: 6px 10px; background-color: ${alpineRating.color}; color: ${alpineRating.textColor}; border-radius: 4px; text-align: center; font-weight: bold; font-size: 13px;">
-                            ${alpineRating.display}
-                        </div>
-                    </div>
-                    
-                    <div style="margin-bottom: 8px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                            <span style="font-size: 12px; color: #e0e0e0; font-weight: 600;">Treeline</span>
-                            <span style="font-size: 11px; color: #bbb;">1500-2500m</span>
-                        </div>
-                        <div style="padding: 6px 10px; background-color: ${treelineRating.color}; color: ${treelineRating.textColor}; border-radius: 4px; text-align: center; font-weight: bold; font-size: 13px;">
-                            ${treelineRating.display}
-                        </div>
-                    </div>
-                    
-                    <div style="margin-bottom: 10px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                            <span style="font-size: 12px; color: #e0e0e0; font-weight: 600;">Below Treeline</span>
-                            <span style="font-size: 11px; color: #bbb;">&lt;1500m</span>
-                        </div>
-                        <div style="padding: 6px 10px; background-color: ${belowTreelineRating.color}; color: ${belowTreelineRating.textColor}; border-radius: 4px; text-align: center; font-weight: bold; font-size: 13px;">
-                            ${belowTreelineRating.display}
-                        </div>
-                    </div>
-                    
-                    <div style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 8px; margin-top: 8px;">
-                        <small style="color: #ccc; font-size: 11px; display: block; text-align: center;">
-                            📊 Click avalanche card for full forecast details
-                        </small>
-                    </div>
-                </div>
-            `;
-            layer.bindPopup(popupContent);
+        if (!showRoadEventsLayer || driveBCEvents.length === 0) {
+            setMarkers([]);
+            console.log(`Road events: layer ${showRoadEventsLayer ? 'ON' : 'OFF'}, ${driveBCEvents.length} events available`);
+            return;
         }
 
-        // Highlight on hover - with proper cleanup
-        const handleMouseOver = (e) => {
-            const layer = e.target;
-            layer.setStyle({
-                weight: 3,
-                fillOpacity: 0.5
-            });
-        };
+        console.log(`Creating markers for ${driveBCEvents.length} DriveBC events...`);
 
-        const handleMouseOut = (e) => {
-            const layer = e.target;
-            layer.setStyle({
-                weight: 2,
-                fillOpacity: 0.3
-            });
-        };
+        const newMarkers = [];
+        let skippedCount = 0;
 
-        layer.on({
-            mouseover: handleMouseOver,
-            mouseout: handleMouseOut
-        });
-
-        // Clean up event listeners when layer is removed
-        layer.on('remove', () => {
-            layer.off('mouseover', handleMouseOver);
-            layer.off('mouseout', handleMouseOut);
-        });
-    }, [avalancheProducts]);
-
-    // Memoize DriveBC markers to prevent re-rendering - MEMORY LEAK FIX: Use cached icons
-    const driveBCMarkers = useMemo(() => {
-        if (!showRoadEventsLayer) return null;
-
-        const markers = [];
-
-        // Render DriveBC road events
-        const eventMarkers = driveBCEvents.map((event, idx) => {
-            // Only show events with valid coordinates
-            if (!event.geography || !event.geography.coordinates) return null;
-
-            // Handle different geometry types (Point vs LineString)
+        driveBCEvents.forEach((event, index) => {
+            // Robust coordinate extraction
             let lon, lat;
-            if (event.geography.type === 'LineString') {
-                // For LineString, use the middle point or first point
-                const coords = event.geography.coordinates;
-                const midIndex = Math.floor(coords.length / 2);
-                [lon, lat] = coords[midIndex] || coords[0];
-            } else {
-                // Default to Point
-                [lon, lat] = event.geography.coordinates;
-            }
 
-            const parsedLat = typeof lat === 'string' ? parseFloat(lat) : lat;
-            const parsedLon = typeof lon === 'string' ? parseFloat(lon) : lon;
+            if (event.geography?.type === 'Point' && Array.isArray(event.geography.coordinates)) {
+                [lon, lat] = event.geography.coordinates;
+            } else if (event.geography?.type === 'LineString' && Array.isArray(event.geography.coordinates) && event.geography.coordinates.length > 0) {
+                // For LineString, use first point
+                [lon, lat] = event.geography.coordinates[0];
+            }
 
             // Validate coordinates are valid numbers
-            if (typeof parsedLat !== 'number' || typeof parsedLon !== 'number' ||
-                isNaN(parsedLat) || isNaN(parsedLon)) {
-                return null;
+            if (!lon || !lat || isNaN(lon) || isNaN(lat)) {
+                console.warn(`Event ${index} has invalid coordinates:`, event.geography);
+                skippedCount++;
+                return;
             }
 
-            const eventType = event.event_type || 'INCIDENT';
-            const eventDescription = event.description || '';
-            const typeInfo = parseEventType(eventType, eventDescription);
-            const severityInfo = parseSeverity(event.severity);
-            const roadNames = getRoadNames(event);
-            const nextUpdate = getNextUpdate(eventDescription);
+            const typeInfo = parseEventType(event.event_type, event.description || '');
 
-            return (
-                <Marker
-                    key={`event-${event.id || idx}`}
-                    position={[parsedLat, parsedLon]}
-                    icon={getEventIcon(eventType, eventDescription)}
-                >
-                    <Popup>
-                        <div style={{ minWidth: '240px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '10px',
-                                marginBottom: '10px',
-                                paddingBottom: '8px',
-                                borderBottom: `3px solid ${typeInfo.color}`
-                            }}>
-                                <span style={{ fontSize: '24px' }}>{typeInfo.icon}</span>
-                                <div>
-                                    <strong style={{ color: '#f5f5f5', fontSize: '15px', display: 'block' }}>{typeInfo.label}</strong>
-                                    <span style={{
-                                        fontSize: '11px',
-                                        color: typeInfo.color,
-                                        fontWeight: '600',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.5px'
-                                    }}>{typeInfo.category || 'Road Event'}</span>
-                                </div>
-                            </div>
+            // Wrapper element for Mapbox positioning
+            const wrapper = document.createElement('div');
+            wrapper.className = 'marker-wrapper';
+            wrapper.style.cursor = 'pointer';
+            wrapper.style.zIndex = '1000'; // Ensure high z-index
 
-                            <div style={{
-                                padding: '8px 12px',
-                                backgroundColor: severityInfo.color,
-                                color: 'white',
-                                borderRadius: '6px',
-                                marginBottom: '10px',
-                                fontSize: '13px',
-                                fontWeight: 'bold',
-                                textAlign: 'center',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                            }}>
-                                {severityInfo.label} Severity
-                            </div>
+            // Inner element for styling and hover effect
+            const el = document.createElement('div');
+            el.className = 'road-event-marker';
+            el.style.cssText = `
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                background-color: ${typeInfo.color};
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 18px;
+                border: 3px solid white;
+                box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+                transition: transform 0.2s ease-out;
+            `;
+            el.textContent = typeInfo.icon;
 
-                            <div style={{ marginBottom: '10px' }}>
-                                <div style={{ fontSize: '11px', color: '#ddd', marginBottom: '4px', textTransform: 'uppercase', fontWeight: '600' }}>Location</div>
-                                <div style={{ color: '#f5f5f5', fontSize: '13px', fontWeight: '500' }}>{roadNames}</div>
-                                {(() => {
-                                    const segment = getRoadSegment(event);
-                                    return segment && (
-                                        <div style={{ fontSize: '11px', color: '#bbb', marginTop: '4px', fontStyle: 'italic' }}>
-                                            📍 {segment.from} → {segment.to}
-                                        </div>
-                                    );
-                                })()}
-                            </div>
+            // Hover effect on inner element to avoid conflicting with Mapbox positioning
+            wrapper.addEventListener('mouseenter', () => {
+                el.style.transform = 'scale(1.2)';
+                wrapper.style.zIndex = '1001'; // Bring to front on hover
+            });
+            wrapper.addEventListener('mouseleave', () => {
+                el.style.transform = 'scale(1)';
+                wrapper.style.zIndex = '1000';
+            });
 
-                            <div style={{
-                                color: '#f0f0f0',
-                                fontSize: '12px',
-                                backgroundColor: 'rgba(255,255,255,0.1)',
-                                padding: '8px',
-                                borderRadius: '4px',
-                                marginBottom: '8px',
-                                lineHeight: '1.4'
-                            }}>
-                                {event.description ? (
-                                    event.description.length > 120
-                                        ? `${event.description.substring(0, 120)}...`
-                                        : event.description
-                                ) : event.headline}
-                            </div>
+            wrapper.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent map click
+                setSelectedEvent(event);
+                setShowEventModal(true);
+            });
 
-                            {nextUpdate && (
-                                <div style={{
-                                    fontSize: '11px',
-                                    color: '#FFC107',
-                                    marginBottom: '8px',
-                                    fontWeight: '500',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '4px'
-                                }}>
-                                    📅 Next Update: {nextUpdate}
-                                </div>
-                            )}
+            wrapper.appendChild(el);
 
-                            <div style={{ marginTop: '12px', textAlign: 'center' }}>
-                                <button
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setSelectedRoadEvent(event);
-                                        setShowRoadEventModal(true);
-                                    }}
-                                    style={{
-                                        display: 'inline-block',
-                                        padding: '6px 12px',
-                                        backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                                        color: '#fff',
-                                        textDecoration: 'none',
-                                        borderRadius: '4px',
-                                        fontSize: '12px',
-                                        fontWeight: '500',
-                                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                                        transition: 'background-color 0.2s',
-                                        cursor: 'pointer',
-                                        width: '100%'
-                                    }}
-                                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.25)'}
-                                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)'}
-                                >
-                                    View Full Report ↗
-                                </button>
-                            </div>
-
-                            {event.updated && (
-                                <div style={{
-                                    fontSize: '10px',
-                                    color: '#ccc',
-                                    textAlign: 'right',
-                                    marginTop: '8px',
-                                    paddingTop: '8px',
-                                    borderTop: '1px solid rgba(255,255,255,0.2)'
-                                }}>
-                                    🕐 Updated: {new Date(event.updated).toLocaleString('en-US', {
-                                        month: 'short',
-                                        day: 'numeric',
-                                        hour: 'numeric',
-                                        minute: '2-digit'
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    </Popup>
-                </Marker>
-            );
+            try {
+                const marker = new mapboxgl.Marker({ element: wrapper })
+                    .setLngLat([lon, lat])
+                    .addTo(map.current);
+                newMarkers.push(marker);
+            } catch (error) {
+                console.error(`Failed to create marker for event ${index}:`, error);
+                skippedCount++;
+            }
         });
 
-        return eventMarkers.filter(m => m !== null);
-    }, [driveBCEvents, showRoadEventsLayer]);
+        setMarkers(newMarkers);
+        console.log(`✅ Created ${newMarkers.length} markers successfully${skippedCount > 0 ? `, skipped ${skippedCount} invalid` : ''}`);
+
+        // Cleanup on unmount or toggle
+        return () => {
+            newMarkers.forEach(marker => marker.remove());
+        };
+    }, [showRoadEventsLayer, driveBCEvents]);
+
+    // Toggle terrain (WITHOUT changing base style to preserve avalanche layers)
+    useEffect(() => {
+        if (!map.current || isLoading) return;
+
+        // Wait for map to be fully loaded
+        if (!map.current.loaded()) return;
+
+        try {
+            if (showTerrainLayer) {
+                // Only set terrain if source exists
+                if (!map.current.getSource('mapbox-dem')) {
+                    console.warn('Terrain source not ready yet');
+                    return;
+                }
+                map.current.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
+                // DON'T change style - it removes avalanche layers
+                // map.current.setStyle(MAP_STYLES.satellite);
+            } else {
+                map.current.setTerrain(null);
+                // DON'T change style - it removes avalanche layers
+                // map.current.setStyle(MAP_STYLES.outdoors);
+            }
+        } catch (error) {
+            console.error('Error toggling terrain:', error);
+            setMapError(error.message);
+        }
+    }, [showTerrainLayer, isLoading]);
 
     return (
         <Card className="glass-card border-0 text-white shadow-lg hover-scale transition-all">
@@ -495,118 +471,35 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                         />
                         <Badge bg="secondary" className="d-flex align-items-center gap-1">
                             <Layers size={12} />
-                            OpenStreetMap
+                            Mapbox
                         </Badge>
                     </div>
                 </div>
 
-                <div className="map-container rounded-4 overflow-hidden position-relative" style={{ height: '400px' }}>
-                    {isLoading && (
-                        <div className="position-absolute top-50 start-50 translate-middle z-3">
-                            <Spinner animation="border" variant="light" />
-                        </div>
-                    )}
-
-                    <MapContainer
-                        center={center}
-                        zoom={10}
-                        scrollWheelZoom={true}
-                        style={{ height: '100%', width: '100%' }}
-                        ref={mapRef}
-                    >
-                        <TileLayer
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        />
-
-                        {/* Terrain overlay layer */}
-                        {showTerrainLayer && (
-                            <TileLayer
-                                attribution='Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
-                                url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
-                                maxZoom={17}
-                                opacity={0.6}
-                            />
-                        )}
-
-                        {/* Avalanche forecast areas - MEMORY LEAK FIX: Added key prop */}
-                        {showAvalancheLayer && avalancheAreas && (
-                            <GeoJSON
-                                key="avalanche-areas"
-                                data={avalancheAreas}
-                                style={avalancheStyle}
-                                onEachFeature={onEachAvalancheFeature}
-                            />
-                        )}
-
-                        {/* DriveBC road events */}
-                        {driveBCMarkers}
-
-                        {/* Current location marker */}
-                        <Marker position={center}>
-                            <Popup>
-                                <div style={{ minWidth: '220px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-                                    <div style={{
-                                        marginBottom: '10px',
-                                        paddingBottom: '8px',
-                                        borderBottom: '2px solid #4A90E2'
-                                    }}>
-                                        <strong style={{ fontSize: '16px', color: '#f5f5f5', display: 'block' }}>{locationName}</strong>
-                                        <span style={{ fontSize: '11px', color: '#ccc' }}>📍 Selected Location</span>
-                                    </div>
-
-                                    <div style={{ marginBottom: '8px' }}>
-                                        <div style={{ fontSize: '11px', color: '#ddd', marginBottom: '4px', textTransform: 'uppercase', fontWeight: '600' }}>Coordinates</div>
-                                        <div style={{ fontSize: '12px', color: '#f0f0f0', fontFamily: 'monospace' }}>
-                                            {center[0].toFixed(4)}°N, {center[1].toFixed(4)}°W
-                                        </div>
-                                    </div>
-
-                                    {location?.elevation && (
-                                        <div style={{ marginBottom: '8px' }}>
-                                            <div style={{ fontSize: '11px', color: '#ddd', marginBottom: '4px', textTransform: 'uppercase', fontWeight: '600' }}>Elevation</div>
-                                            <div style={{ fontSize: '12px', color: '#f0f0f0' }}>
-                                                ⛰️ Base: {location.elevation.base}m
-                                                {location.elevation.summit && ` | Summit: ${location.elevation.summit}m`}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {location?.avalancheZone && (
-                                        <div style={{
-                                            marginTop: '10px',
-                                            padding: '8px 12px',
-                                            backgroundColor: '#D84315',
-                                            borderLeft: '4px solid #FF6F00',
-                                            borderRadius: '4px'
-                                        }}>
-                                            <div style={{ fontSize: '10px', color: '#FFE0B2', fontWeight: '600', marginBottom: '3px', letterSpacing: '0.5px' }}>AVALANCHE ZONE</div>
-                                            <div style={{ fontSize: '13px', color: '#FFFFFF', fontWeight: '600' }}>{location.avalancheZone}</div>
-                                        </div>
-                                    )}
-                                </div>
-                            </Popup>
-                        </Marker>
-
-                        {/* Map updater component */}
-                        <MapUpdater center={center} />
-                    </MapContainer>
-                </div>
+                <div
+                    ref={mapContainer}
+                    className="map-container rounded-4 overflow-hidden"
+                    style={{ height: '400px' }}
+                />
 
                 <div className="mt-3 d-flex justify-content-between align-items-center">
                     <small className="text-white-50">
-                        Drag to pan • Scroll to zoom • Click areas for details
+                        Drag to pan • Scroll to zoom • Click markers for details
                     </small>
-                    <div className="text-white-50 small">
-                        Lat: {center[0].toFixed(4)}, Lon: {center[1].toFixed(4)}
-                    </div>
+                    <small className="text-white-50">
+                        Powered by Mapbox GL
+                    </small>
                 </div>
             </Card.Body>
 
+            {/* Road Event Modal */}
             <RoadEventModal
-                show={showRoadEventModal}
-                onHide={() => setShowRoadEventModal(false)}
-                event={selectedRoadEvent}
+                show={showEventModal}
+                onHide={() => {
+                    setShowEventModal(false);
+                    setSelectedEvent(null);
+                }}
+                event={selectedEvent}
             />
         </Card>
     );

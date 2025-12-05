@@ -1,9 +1,16 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import './AnimatedBackground.css';
 
 /**
- * AnimatedBackground Component
+ * AnimatedBackground Component (Optimized for Mobile)
  * Renders dynamic, animated backgrounds based on weather conditions and time of day
+ * 
+ * Optimizations:
+ * - Reduced particle counts on mobile devices (50% fewer on mobile)
+ * - Respects prefers-reduced-motion accessibility setting
+ * - Pauses when tab is hidden (saves battery/CPU)
+ * - Adaptive performance based on screen size
+ * 
  * @param {number} weatherCode - WMO weather code
  * @param {number} currentTime - Current time in milliseconds
  * @param {number} sunrise - Sunrise time in milliseconds
@@ -11,27 +18,50 @@ import './AnimatedBackground.css';
  */
 const AnimatedBackground = ({ weatherCode, currentTime, sunrise, sunset }) => {
     const canvasRef = useRef(null);
+    const [isVisible, setIsVisible] = useState(true);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+    // Check for reduced motion preference
+    useEffect(() => {
+        const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+        setPrefersReducedMotion(mediaQuery.matches);
+
+        const handler = (e) => setPrefersReducedMotion(e.matches);
+        mediaQuery.addEventListener('change', handler);
+        return () => mediaQuery.removeEventListener('change', handler);
+    }, []);
+
+    // Detect mobile on resize
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    // Pause animations when tab is hidden
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            setIsVisible(!document.hidden);
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, []);
 
     // Determine time of day from sunrise/sunset
     const getTimeOfDay = (current, sunriseTime, sunsetTime) => {
-        const THIRTY_MINUTES = 30 * 60 * 1000; // 30 minutes in milliseconds
-
-        // Sunrise period: 30 min before to 30 min after sunrise
+        const THIRTY_MINUTES = 30 * 60 * 1000;
         if (current >= sunriseTime - THIRTY_MINUTES && current <= sunriseTime + THIRTY_MINUTES) {
             return 'sunrise';
         }
-
-        // Sunset period: 30 min before to 30 min after sunset
         if (current >= sunsetTime - THIRTY_MINUTES && current <= sunsetTime + THIRTY_MINUTES) {
             return 'sunset';
         }
-
-        // Day: Between sunrise and sunset
         if (current > sunriseTime + THIRTY_MINUTES && current < sunsetTime - THIRTY_MINUTES) {
             return 'day';
         }
-
-        // Night: Everything else
         return 'night';
     };
 
@@ -48,9 +78,14 @@ const AnimatedBackground = ({ weatherCode, currentTime, sunrise, sunset }) => {
     const weatherType = getWeatherType(weatherCode);
     const timeOfDay = getTimeOfDay(currentTime, sunrise, sunset);
 
-    // Canvas-based snow animation
+    // Skip animations if user prefers reduced motion
+    if (prefersReducedMotion) {
+        return <div className={`animated-background ${weatherType} ${timeOfDay} reduced-motion`} />;
+    }
+
+    // Canvas-based snow animation (OPTIMIZED)
     useEffect(() => {
-        if (weatherType !== 'snow') return;
+        if (weatherType !== 'snow' || !isVisible) return;
 
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -60,9 +95,9 @@ const AnimatedBackground = ({ weatherCode, currentTime, sunrise, sunset }) => {
         canvas.height = window.innerHeight;
 
         const snowflakes = [];
-        const snowflakeCount = 150;
+        // Mobile: 50 particles, Desktop: 150 particles
+        const snowflakeCount = isMobile ? 50 : 150;
 
-        // Create snowflakes
         for (let i = 0; i < snowflakeCount; i++) {
             snowflakes.push({
                 x: Math.random() * canvas.width,
@@ -76,6 +111,8 @@ const AnimatedBackground = ({ weatherCode, currentTime, sunrise, sunset }) => {
 
         let animationId;
         const animate = () => {
+            if (!isVisible) return; // Pause when hidden
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             snowflakes.forEach(flake => {
@@ -84,11 +121,9 @@ const AnimatedBackground = ({ weatherCode, currentTime, sunrise, sunset }) => {
                 ctx.fillStyle = `rgba(255, 255, 255, ${flake.opacity})`;
                 ctx.fill();
 
-                // Update position
                 flake.y += flake.speed;
                 flake.x += flake.drift;
 
-                // Reset if off screen
                 if (flake.y > canvas.height) {
                     flake.y = -10;
                     flake.x = Math.random() * canvas.width;
@@ -113,11 +148,11 @@ const AnimatedBackground = ({ weatherCode, currentTime, sunrise, sunset }) => {
             cancelAnimationFrame(animationId);
             window.removeEventListener('resize', handleResize);
         };
-    }, [weatherType]);
+    }, [weatherType, isVisible, isMobile]);
 
-    // Canvas-based rain animation
+    // Canvas-based rain animation (OPTIMIZED)
     useEffect(() => {
-        if (weatherType !== 'rain') return;
+        if (weatherType !== 'rain' || !isVisible) return;
 
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -127,9 +162,9 @@ const AnimatedBackground = ({ weatherCode, currentTime, sunrise, sunset }) => {
         canvas.height = window.innerHeight;
 
         const raindrops = [];
-        const raindropCount = 200;
+        // Mobile: 80 particles, Desktop: 200 particles
+        const raindropCount = isMobile ? 80 : 200;
 
-        // Create raindrops
         for (let i = 0; i < raindropCount; i++) {
             raindrops.push({
                 x: Math.random() * canvas.width,
@@ -142,6 +177,8 @@ const AnimatedBackground = ({ weatherCode, currentTime, sunrise, sunset }) => {
 
         let animationId;
         const animate = () => {
+            if (!isVisible) return;
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             raindrops.forEach(drop => {
@@ -152,10 +189,8 @@ const AnimatedBackground = ({ weatherCode, currentTime, sunrise, sunset }) => {
                 ctx.lineWidth = 1;
                 ctx.stroke();
 
-                // Update position
                 drop.y += drop.speed;
 
-                // Reset if off screen
                 if (drop.y > canvas.height) {
                     drop.y = -drop.length;
                     drop.x = Math.random() * canvas.width;
@@ -178,11 +213,11 @@ const AnimatedBackground = ({ weatherCode, currentTime, sunrise, sunset }) => {
             cancelAnimationFrame(animationId);
             window.removeEventListener('resize', handleResize);
         };
-    }, [weatherType]);
+    }, [weatherType, isVisible, isMobile]);
 
-    // Canvas-based realistic clouds animation
+    // Canvas-based clouds animation (OPTIMIZED)
     useEffect(() => {
-        if (weatherType !== 'cloudy') return;
+        if (weatherType !== 'cloudy' || !isVisible) return;
 
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -192,27 +227,26 @@ const AnimatedBackground = ({ weatherCode, currentTime, sunrise, sunset }) => {
         canvas.height = window.innerHeight;
 
         const clouds = [];
-        const cloudCount = 8;
+        // Mobile: 4 clouds, Desktop: 8 clouds
+        const cloudCount = isMobile ? 4 : 8;
 
-        // Create realistic clouds with randomized properties
         for (let i = 0; i < cloudCount; i++) {
             const cloud = {
                 x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height * 0.5, // Upper 50% of screen
-                size: Math.random() * 120 + 80, // 80-200px
-                speed: Math.random() * 0.2 + 0.1, // Slow movement
-                opacity: Math.random() * 0.15 + 0.15, // 0.15-0.3 opacity (more subtle)
+                y: Math.random() * canvas.height * 0.5,
+                size: Math.random() * 120 + 80,
+                speed: Math.random() * 0.2 + 0.1,
+                opacity: Math.random() * 0.15 + 0.15,
                 puffs: []
             };
 
-            // Create 5-8 overlapping circles per cloud for realistic shape
             const puffCount = Math.floor(Math.random() * 4) + 5;
             for (let j = 0; j < puffCount; j++) {
                 cloud.puffs.push({
                     offsetX: Math.random() * 100 - 50,
                     offsetY: Math.random() * 40 - 20,
-                    radius: Math.random() * 60 + 25, // More size variation
-                    innerOpacity: Math.random() * 0.3 + 0.7 // Variation in puff opacity
+                    radius: Math.random() * 60 + 25,
+                    innerOpacity: Math.random() * 0.3 + 0.7
                 });
             }
 
@@ -221,15 +255,13 @@ const AnimatedBackground = ({ weatherCode, currentTime, sunrise, sunset }) => {
 
         let animationId;
         const animate = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (!isVisible) return;
 
-            // Enable blur for softer clouds
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.filter = 'blur(8px)';
 
             clouds.forEach(cloud => {
-                // Draw each cloud as multiple overlapping circles with radial gradients
                 cloud.puffs.forEach(puff => {
-                    // Create radial gradient for soft, natural look
                     const gradient = ctx.createRadialGradient(
                         cloud.x + puff.offsetX,
                         cloud.y + puff.offsetY,
@@ -239,7 +271,6 @@ const AnimatedBackground = ({ weatherCode, currentTime, sunrise, sunset }) => {
                         puff.radius
                     );
 
-                    // Center is more opaque, edges fade out
                     const centerOpacity = cloud.opacity * puff.innerOpacity;
                     gradient.addColorStop(0, `rgba(255, 255, 255, ${centerOpacity})`);
                     gradient.addColorStop(0.5, `rgba(255, 255, 255, ${centerOpacity * 0.6})`);
@@ -257,19 +288,15 @@ const AnimatedBackground = ({ weatherCode, currentTime, sunrise, sunset }) => {
                     ctx.fill();
                 });
 
-                // Update position
                 cloud.x += cloud.speed;
 
-                // Reset if off screen
                 if (cloud.x - cloud.size > canvas.width) {
                     cloud.x = -cloud.size;
                     cloud.y = Math.random() * canvas.height * 0.5;
                 }
             });
 
-            // Reset filter for next frame
             ctx.filter = 'none';
-
             animationId = requestAnimationFrame(animate);
         };
 
@@ -286,11 +313,11 @@ const AnimatedBackground = ({ weatherCode, currentTime, sunrise, sunset }) => {
             cancelAnimationFrame(animationId);
             window.removeEventListener('resize', handleResize);
         };
-    }, [weatherType]);
+    }, [weatherType, isVisible, isMobile]);
 
-    // Canvas-based fog animation
+    // Canvas-based fog animation (OPTIMIZED)
     useEffect(() => {
-        if (weatherType !== 'fog') return;
+        if (weatherType !== 'fog' || !isVisible) return;
 
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -300,30 +327,29 @@ const AnimatedBackground = ({ weatherCode, currentTime, sunrise, sunset }) => {
         canvas.height = window.innerHeight;
 
         const fogLayers = [];
-        const layerCount = 5; // More layers for depth
+        // Mobile: 3 layers, Desktop: 5 layers
+        const layerCount = isMobile ? 3 : 5;
 
-        // Create fog layers with varying properties
         for (let i = 0; i < layerCount; i++) {
             fogLayers.push({
                 x: Math.random() * canvas.width - canvas.width,
                 y: i * (canvas.height / layerCount),
                 width: canvas.width * 2.5,
                 height: canvas.height / layerCount + 100,
-                speed: (Math.random() * 0.3 + 0.2) * (i % 2 === 0 ? 1 : -1), // Alternate directions
-                opacity: Math.random() * 0.3 + 0.3, // 0.3-0.6 opacity
+                speed: (Math.random() * 0.3 + 0.2) * (i % 2 === 0 ? 1 : -1),
+                opacity: Math.random() * 0.3 + 0.3,
                 offset: Math.random() * 100
             });
         }
 
         let animationId;
         const animate = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (!isVisible) return;
 
-            // Apply blur for soft fog
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.filter = 'blur(40px)';
 
             fogLayers.forEach((layer) => {
-                // Create horizontal gradient for fog layer
                 const gradient = ctx.createLinearGradient(
                     layer.x,
                     0,
@@ -331,7 +357,6 @@ const AnimatedBackground = ({ weatherCode, currentTime, sunrise, sunset }) => {
                     0
                 );
 
-                // Create smooth fog gradient with multiple stops
                 gradient.addColorStop(0, `rgba(255, 255, 255, 0)`);
                 gradient.addColorStop(0.1, `rgba(255, 255, 255, ${layer.opacity * 0.3})`);
                 gradient.addColorStop(0.3, `rgba(255, 255, 255, ${layer.opacity * 0.7})`);
@@ -343,10 +368,8 @@ const AnimatedBackground = ({ weatherCode, currentTime, sunrise, sunset }) => {
                 ctx.fillStyle = gradient;
                 ctx.fillRect(layer.x, layer.y, layer.width, layer.height);
 
-                // Update position
                 layer.x += layer.speed;
 
-                // Reset if off screen
                 if (layer.speed > 0 && layer.x > canvas.width) {
                     layer.x = -layer.width;
                 } else if (layer.speed < 0 && layer.x + layer.width < 0) {
@@ -354,9 +377,7 @@ const AnimatedBackground = ({ weatherCode, currentTime, sunrise, sunset }) => {
                 }
             });
 
-            // Reset filter
             ctx.filter = 'none';
-
             animationId = requestAnimationFrame(animate);
         };
 
@@ -373,7 +394,7 @@ const AnimatedBackground = ({ weatherCode, currentTime, sunrise, sunset }) => {
             cancelAnimationFrame(animationId);
             window.removeEventListener('resize', handleResize);
         };
-    }, [weatherType]);
+    }, [weatherType, isVisible, isMobile]);
 
     return (
         <div className={`animated-background ${weatherType} ${timeOfDay}`}>
@@ -382,10 +403,10 @@ const AnimatedBackground = ({ weatherCode, currentTime, sunrise, sunset }) => {
                 <canvas ref={canvasRef} className="weather-canvas" />
             )}
 
-            {/* Stars for clear night sky */}
+            {/* Stars for clear night sky (reduced on mobile) */}
             {weatherType === 'clear' && timeOfDay === 'night' && (
                 <div className="stars">
-                    {[...Array(100)].map((_, i) => (
+                    {[...Array(isMobile ? 50 : 100)].map((_, i) => (
                         <div
                             key={i}
                             className="star"
