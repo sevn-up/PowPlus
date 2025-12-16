@@ -1,0 +1,129 @@
+/* Responsive Utilities for PowPlus */
+/* Mobile-first approach with progressive enhancement */
+
+:root {
+    /* Breakpoint variables matching Bootstrap but with mobile-first approach */
+    --mobile-sm: 375px;
+    --mobile-md: 393px;
+    /* iPhone 14 Pro - Primary target */
+    --mobile-lg: 428px;
+    --tablet: 768px;
+    --desktop: 992px;
+    --desktop-lg: 1200px;
+
+    /* Touch-friendly spacing */
+    --tap-target-min: 44px;
+    --mobile-spacing-sm: 0.5rem;
+    --mobile-spacing-md: 0.75rem;
+    --mobile-spacing-lg: 1rem;
+}
+
+/* Mobile-first tap target sizes (44px minimum for thumb-friendly) */
+.tap-target {
+    min-height: var(--tap-target-min);
+    min-width: var(--tap-target-min);
+}
+
+/* Prevent horizontal overflow - Critical for mobile */
+.no-overflow-x {
+    overflow-x: hidden;
+    max-width: 100vw;
+}
+
+.no-overflow-y {
+    overflow-y: hidden;
+    max-height: 100vh;
+}
+
+/* Responsive text utilities */
+@media (max-width: 768px) {
+    .text-mobile-xs {
+        font-size: 0.65rem;
+    }
+
+    .text-mobile-sm {
+        font-size: 0.75rem;
+    }
+
+    .text-mobile-md {
+        font-size: 0.875rem;
+    }
+
+    .text-mobile-lg {
+        font-size: 1rem;
+    }
+}
+
+/* Mobile-specific spacing utilities */
+@media (max-width: 768px) {
+    .p-mobile-sm {
+        padding: var(--mobile-spacing-sm) !important;
+    }
+
+    .p-mobile-md {
+        padding: var(--mobile-spacing-md) !important;
+    }
+
+    .p-mobile-lg {
+        padding: var(--mobile-spacing-lg) !important;
+    }
+
+    .px-mobile-sm {
+        padding-left: var(--mobile-spacing-sm) !important;
+        padding-right: var(--mobile-spacing-sm) !important;
+    }
+
+    .py-mobile-sm {
+        padding-top: var(--mobile-spacing-sm) !important;
+        padding-bottom: var(--mobile-spacing-sm) !important;
+    }
+}
+
+/* Flexbox utilities for responsive layouts */
+.flex-mobile-column {
+    flex-direction: column;
+}
+
+@media (min-width: 768px) {
+    .flex-md-row {
+        flex-direction: row;
+    }
+}
+
+/* Width constraints for mobile */
+@media (max-width: 768px) {
+    .w-mobile-100 {
+        width: 100% !important;
+    }
+
+    .w-mobile-auto {
+        width: auto !important;
+    }
+}
+
+/* Smooth scrolling for mobile */
+.scroll-touch {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+}
+
+/* Hide scrollbar but keep functionality */
+.hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+/* Mobile-friendly card adjustments */
+@media (max-width: 768px) {
+    .card-mobile-compact {
+        padding: 0.75rem !important;
+    }
+
+    .card-mobile-spacing {
+        margin-bottom: 0.75rem !important;
+    }
+}

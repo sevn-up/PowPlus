@@ -1,0 +1,119 @@
+/* Hourly Forecast Card Enhancements */
+
+/* Smooth hover effects for hourly cards (desktop only) */
+@media (min-width: 769px) {
+    .hourly-forecast-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .hourly-forecast-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    }
+}
+
+/* Touch feedback for mobile */
+@media (max-width: 768px) {
+    .hourly-forecast-card:active {
+        transform: scale(0.98);
+        transition: transform 0.1s ease;
+    }
+}
+
+/* Ensure hourly forecast strip doesn't cause horizontal scroll */
+.hourly-forecast-container {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+/* Hide scrollbar on mobile but keep functionality */
+@media (max-width: 768px) {
+    .hourly-forecast-container::-webkit-scrollbar {
+        display: none;
+    }
+
+    .hourly-forecast-container {
+        scrollbar-width: none;
+    }
+}
+
+/* Forecast Cards - Responsive Sizing */
+/* Stack vertically on mobile for better readability */
+@media (max-width: 767px) {
+
+    /* Full width cards on mobile for easy reading */
+    .forecast-card-container>div {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+}
+
+/* Forecast card styling - responsive */
+@media (max-width: 768px) {
+    .forecast-card-container .forecast-card {
+        gap: 6px;
+    }
+}
+
+/* Forecast scrollable container */
+.forecast-scrollable-container {
+    /* Custom scrollbar for webkit browsers */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(59, 130, 246, 0.5) rgba(255, 255, 255, 0.1);
+}
+
+.forecast-scrollable-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.forecast-scrollable-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.forecast-scrollable-container::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.5);
+    border-radius: 10px;
+}
+
+.forecast-scrollable-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(59, 130, 246, 0.7);
+}
+
+/* Desktop: constrain width for side-by-side layout */
+@media (min-width: 768px) {
+    .forecast-card-container>div {
+        max-width: 180px !important;
+    }
+}
+
+/* Prevent 3-day forecast cards from overflowing on mobile */
+@media (max-width: 768px) {
+
+    /* Ensure forecast cards fit on mobile screens */
+    .forecast-card-container {
+        gap: 0.5rem !important;
+    }
+}
+
+/* Add subtle scroll hint for overflow containers */
+.forecast-card-container::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 2rem;
+    background: linear-gradient(to left, rgba(0, 0, 0, 0.3), transparent);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+@media (max-width: 768px) {
+    .forecast-card-container[data-scrollable="true"]::after {
+        opacity: 1;
+    }
+}

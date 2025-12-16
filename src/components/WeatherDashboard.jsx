@@ -11,6 +11,7 @@ import MapCard from './MapCard';
 import HourlyDetailModal from './HourlyDetailModal';
 import { getWeatherIcon, getWindColor } from '../utils/weatherIcons.jsx';
 import { getSnowQuality, getVisibilityRating, getFreezingLevelWarning, getTemperatureColor, formatWindDirection } from '../utils/skiConditions';
+import './WeatherDashboard.css';
 
 const WeatherDashboard = () => {
     const [town, setTown] = useState('Whistler');
@@ -27,10 +28,13 @@ const WeatherDashboard = () => {
     const allLocations = locations.map(loc => loc.name);
     const [savedLocations] = useState(allLocations);
     const [showSidebar, setShowSidebar] = useState(false);
-    const [forecastView, setForecastView] = useState('10day'); // '3day' or '10day'
     const [isAnimating, setIsAnimating] = useState(false); // For smooth transitions
     const [selectedHourIndex, setSelectedHourIndex] = useState(null); // For hourly detail modal
     const [showHourlyModal, setShowHourlyModal] = useState(false);
+
+    // Hold-down gesture state for mobile
+    const [isHolding, setIsHolding] = useState(false);
+    const holdTimerRef = React.useRef(null);
 
     // Helper function to get UV index color
     const getUVColor = (index) => {
@@ -53,6 +57,31 @@ const WeatherDashboard = () => {
         if (!isoString) return '';
         const date = new Date(isoString);
         return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    };
+
+    // Hold-down gesture handlers for hourly cards
+    const handleHourPress = (idx) => {
+        holdTimerRef.current = setTimeout(() => {
+            setIsHolding(true);
+            setSelectedHourIndex(idx);
+            setShowHourlyModal(true);
+        }, 200); // 200ms hold threshold
+    };
+
+    const handleHourRelease = () => {
+        clearTimeout(holdTimerRef.current);
+        if (isHolding) {
+            setShowHourlyModal(false);
+            setIsHolding(false);
+        }
+    };
+
+    const handleHourClick = (idx) => {
+        // Only trigger on click if not holding
+        if (!isHolding) {
+            setSelectedHourIndex(idx);
+            setShowHourlyModal(true);
+        }
     };
 
     const fetchWeather = async (townName) => {
@@ -243,7 +272,7 @@ const WeatherDashboard = () => {
                 </Navbar>
 
                 {/* Main Content */}
-                <div className="flex-grow-1 overflow-auto p-4 p-md-5" style={{ height: '100vh' }}>
+                <div className="flex-grow-1 overflow-auto p-3 p-md-5 no-overflow-x" style={{ height: '100vh' }}>
                     {weather && (
                         <Container fluid="lg" className="mt-5 mt-md-0">
                             {/* Header */}
@@ -322,7 +351,7 @@ const WeatherDashboard = () => {
                                         </div>
                                     </div>
 
-                                    <div className="d-flex gap-3 overflow-auto pb-2 scrollbar-hide">
+                                    <div className="hourly-forecast-container d-flex gap-3 overflow-auto pb-2 scrollbar-hide">
                                         {weather.hourly.time.slice(0, 24).map((time, idx) => {
                                             const hourTime = new Date(time);
                                             const currentHour = hourTime.getHours();
@@ -360,9 +389,9 @@ const WeatherDashboard = () => {
                                             return (
                                                 <div
                                                     key={idx}
-                                                    className="d-flex flex-column align-items-center gap-2 position-relative"
+                                                    className="hourly-forecast-card d-flex flex-column align-items-center gap-2 position-relative"
                                                     style={{
-                                                        minWidth: '85px',
+                                                        minWidth: '95px',
                                                         padding: '0.75rem 0.5rem',
                                                         borderRadius: '1rem',
                                                         background: (isSunriseHour || isSunsetHour)
@@ -376,18 +405,16 @@ const WeatherDashboard = () => {
                                                         transition: 'all 0.2s ease',
                                                         cursor: 'pointer'
                                                     }}
-                                                    onClick={() => {
-                                                        setSelectedHourIndex(idx);
-                                                        setShowHourlyModal(true);
-                                                    }}
-                                                    onMouseEnter={(e) => {
-                                                        e.currentTarget.style.transform = 'translateY(-4px)';
-                                                        e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.3)';
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        e.currentTarget.style.transform = 'translateY(0)';
-                                                        e.currentTarget.style.boxShadow = 'none';
-                                                    }}
+                                                    // Touch gesture handlers
+                                                    onTouchStart={() => handleHourPress(idx)}
+                                                    onTouchEnd={handleHourRelease}
+                                                    onTouchCancel={handleHourRelease}
+                                                    // Mouse gesture handlers (desktop)
+                                                    onMouseDown={() => handleHourPress(idx)}
+                                                    onMouseUp={handleHourRelease}
+                                                    onMouseLeave={handleHourRelease}
+                                                    // Click handler (fallback)
+                                                    onClick={() => handleHourClick(idx)}
                                                 >
                                                     {/* Hour label */}
                                                     {/* Hour label with sunrise/sunset inline */}
@@ -847,275 +874,232 @@ const WeatherDashboard = () => {
                                 <Col md={12}>
                                     <Card className="glass-card border-0 h-100 text-white shadow-lg hover-scale transition-all">
                                         <Card.Body>
-                                            <div className="d-flex align-items-center justify-content-between mb-4">
-                                                <div className="d-flex align-items-center gap-2 text-white-50 text-uppercase fw-bold small">
-                                                    <Calendar size={16} /> Forecast
-                                                </div>
-                                                {/* Modern On/Off Toggle */}
-                                                <div className="d-flex align-items-center gap-2 bg-dark bg-opacity-50 rounded-pill p-1" style={{ backdropFilter: 'blur(10px)' }}>
-                                                    <button
-                                                        className={`px-3 py-1 rounded-pill border-0 transition-all ${forecastView === '3day'
-                                                            ? 'bg-primary text-white fw-medium'
-                                                            : 'bg-transparent text-white-50'
-                                                            }`}
-                                                        onClick={() => {
-                                                            setIsAnimating(true);
-                                                            setTimeout(() => {
-                                                                setForecastView('3day');
-                                                                setIsAnimating(false);
-                                                            }, 150);
-                                                        }}
-                                                        style={{ fontSize: '0.75rem', cursor: 'pointer' }}
-                                                    >
-                                                        3 Day
-                                                    </button>
-                                                    <button
-                                                        className={`px-3 py-1 rounded-pill border-0 transition-all ${forecastView === '10day'
-                                                            ? 'bg-primary text-white fw-medium'
-                                                            : 'bg-transparent text-white-50'
-                                                            }`}
-                                                        onClick={() => {
-                                                            setIsAnimating(true);
-                                                            setTimeout(() => {
-                                                                setForecastView('10day');
-                                                                setIsAnimating(false);
-                                                            }, 150);
-                                                        }}
-                                                        style={{ fontSize: '0.75rem', cursor: 'pointer' }}
-                                                    >
-                                                        10 Day
-                                                    </button>
-                                                </div>
+                                            {/* Forecast header - consistent with other cards */}
+                                            <div className="d-flex align-items-center gap-2 mb-4 text-white-50 text-uppercase fw-bold small">
+                                                <Calendar size={16} /> 10 Day Forecast
                                             </div>
 
                                             {weather.daily && (
                                                 <div
-                                                    className="d-flex gap-2 w-100"
+                                                    className="forecast-scrollable-container"
                                                     style={{
-                                                        opacity: isAnimating ? 0 : 1,
-                                                        transform: isAnimating ? 'scale(0.98)' : 'scale(1)',
-                                                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                        overflowX: forecastView === '10day' ? 'auto' : 'visible',
+                                                        maxHeight: '600px',
+                                                        overflowY: 'auto',
+                                                        overflowX: 'hidden',
                                                         scrollbarWidth: 'thin'
                                                     }}
                                                 >
-                                                    {weather.daily.time.slice(0, forecastView === '3day' ? 3 : 10).map((date, idx) => {
-                                                        const dayName = idx === 0 ? 'Today' : new Date(date).toLocaleDateString('en-US', { weekday: 'short' });
-                                                        const maxTemp = Math.round(weather.daily.temperature_2m_max[idx]);
-                                                        const minTemp = Math.round(weather.daily.temperature_2m_min[idx]);
-                                                        const snow = weather.daily.snowfall_sum ? weather.daily.snowfall_sum[idx] : 0;
-                                                        const precip = weather.daily.precipitation_probability_max ? weather.daily.precipitation_probability_max[idx] : 0;
-                                                        const windSpeed = weather.daily.wind_speed_10m_max ? Math.round(weather.daily.wind_speed_10m_max[idx]) : 0;
-                                                        const windDir = weather.daily.wind_direction_10m_dominant ? weather.daily.wind_direction_10m_dominant[idx] : 0;
-                                                        const weatherCode = weather.daily.weather_code ? weather.daily.weather_code[idx] : 0;
-                                                        const uvIndex = weather.daily.uv_index_max ? Math.round(weather.daily.uv_index_max[idx]) : 0;
-                                                        const sunrise = weather.daily.sunrise ? weather.daily.sunrise[idx] : null;
-                                                        const sunset = weather.daily.sunset ? weather.daily.sunset[idx] : null;
+                                                    <div
+                                                        className="d-flex flex-column gap-2"
+                                                        style={{
+                                                            opacity: isAnimating ? 0 : 1,
+                                                            transform: isAnimating ? 'scale(0.98)' : 'scale(1)',
+                                                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                                                        }}
+                                                    >
+                                                        {weather.daily.time.slice(0, 10).map((date, idx) => {
+                                                            const dayName = idx === 0 ? 'Today' : new Date(date).toLocaleDateString('en-US', { weekday: 'short' });
+                                                            const maxTemp = Math.round(weather.daily.temperature_2m_max[idx]);
+                                                            const minTemp = Math.round(weather.daily.temperature_2m_min[idx]);
+                                                            const weatherCode = weather.daily.weather_code[idx];
+                                                            const precip = weather.daily.precipitation_probability_max[idx] || 0;
+                                                            const snow = weather.daily.snowfall_sum[idx] || 0;
+                                                            const windSpeed = weather.daily.wind_speed_10m_max ? Math.round(weather.daily.wind_speed_10m_max[idx]) : 0;
+                                                            const windDir = weather.daily.wind_direction_10m_dominant ? weather.daily.wind_direction_10m_dominant[idx] : 0;
+                                                            const uvIndex = weather.daily.uv_index_max ? Math.round(weather.daily.uv_index_max[idx]) : 0;
+                                                            const sunrise = weather.daily.sunrise ? weather.daily.sunrise[idx] : null;
+                                                            const sunset = weather.daily.sunset ? weather.daily.sunset[idx] : null;
 
-                                                        const is3Day = forecastView === '3day';
+                                                            // Format time from ISO string
+                                                            const formatTime = (isoString) => {
+                                                                if (!isoString) return '--';
+                                                                return new Date(isoString).toLocaleTimeString('en-US', {
+                                                                    hour: 'numeric',
+                                                                    minute: '2-digit',
+                                                                    hour12: true
+                                                                });
+                                                            };
 
-                                                        return (
-                                                            <div
-                                                                key={idx}
-                                                                className="d-flex flex-column align-items-center p-3 rounded-4"
-                                                                style={{
-                                                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                                                    flex: is3Day ? 1 : '1 1 0',
-                                                                    minWidth: is3Day ? '180px' : '85px',
-                                                                    maxWidth: is3Day ? 'none' : '110px',
-                                                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                                                                }}
-                                                            >
-                                                                {/* 1. Day Name - FIXED */}
-                                                                <div className="fw-bold text-white text-center mb-2" style={{ fontSize: is3Day ? '1.1rem' : '0.9rem', minHeight: '24px' }}>
-                                                                    {dayName}
-                                                                </div>
+                                                            // Wind direction arrow
+                                                            const getWindArrow = (deg) => {
+                                                                const arrows = ['↓', '↙', '←', '↖', '↑', '↗', '→', '↘'];
+                                                                const index = Math.round(deg / 45) % 8;
+                                                                return arrows[index];
+                                                            };
 
-                                                                {/* 2. Weather Icon - FIXED */}
-                                                                <div className="mb-3" style={{ minHeight: is3Day ? '56px' : '32px' }}>
-                                                                    {getWeatherIcon(weatherCode, is3Day ? 56 : 32)}
-                                                                </div>
+                                                            return (
+                                                                <div
+                                                                    key={idx}
+                                                                    className="d-flex flex-column align-items-center p-3 rounded-4"
+                                                                    style={{
+                                                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                                                        flex: '0 0 auto',
+                                                                        width: '100%',
+                                                                        minWidth: '0',
+                                                                        maxWidth: '100%',
+                                                                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                                                                    }}
+                                                                >
+                                                                    {/* ROW-BASED LAYOUT - Standardized columns for 10-day */}
+                                                                    <div className="d-flex align-items-center w-100" style={{ gap: '8px' }}>
 
-                                                                {/* 3. Snow Amount - ALWAYS SHOWN FIXED */}
-                                                                <div className="text-center" style={{ minHeight: is3Day ? '28px' : '24px', marginBottom: '4px' }}>
-                                                                    {snow > 0 ? (
-                                                                        <div className="d-flex align-items-center gap-1 justify-content-center">
-                                                                            <Snowflake size={is3Day ? 16 : 14} className="text-info" />
-                                                                            <span className="fw-bold text-info" style={{ fontSize: is3Day ? '0.95rem' : '0.8rem' }}>
-                                                                                {snow.toFixed(1)} cm
-                                                                            </span>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <span className="text-white-50" style={{ fontSize: is3Day ? '0.95rem' : '0.8rem' }}>-</span>
-                                                                    )}
-                                                                </div>
-
-                                                                {/* 4. Precipitation % - ALWAYS SHOWN FIXED */}
-                                                                <div className="text-center text-white-50" style={{ minHeight: is3Day ? '24px' : '20px', fontSize: is3Day ? '0.85rem' : '0.75rem', marginBottom: '8px' }}>
-                                                                    {precip > 0 ? `${precip}%` : '-'}
-                                                                </div>
-
-                                                                {is3Day ? (
-                                                                    /* Enhanced 3-Day View */
-                                                                    <>
-                                                                        {/* 5. Wind Speed + Direction - FIXED SLOT */}
-                                                                        <div className="mb-2" style={{ minHeight: '32px' }}>
-                                                                            {windSpeed > 0 && (
-                                                                                <div
-                                                                                    className="d-flex align-items-center gap-1 px-2 py-1 rounded-pill"
-                                                                                    style={{
-                                                                                        backgroundColor: `${getWindColor(windSpeed)}20`,
-                                                                                        border: `1px solid ${getWindColor(windSpeed)}40`
-                                                                                    }}
-                                                                                >
-                                                                                    <Wind size={14} style={{ color: getWindColor(windSpeed) }} />
-                                                                                    <span className="fw-medium" style={{ color: getWindColor(windSpeed), fontSize: '0.75rem' }}>
-                                                                                        {windSpeed} km/h {getWindDirection(windDir)}
-                                                                                    </span>
-                                                                                </div>
-                                                                            )}
+                                                                        {/* Column 1: Day Name - Fixed width */}
+                                                                        <div
+                                                                            className="fw-bold text-white"
+                                                                            style={{
+                                                                                fontSize: '0.95rem',
+                                                                                minWidth: '50px',
+                                                                                maxWidth: '50px',
+                                                                                flex: '0 0 auto'
+                                                                            }}
+                                                                        >
+                                                                            {dayName}
                                                                         </div>
 
-                                                                        {/* 6. UV Index - FIXED SLOT - ALWAYS SHOWN */}
-                                                                        <div className="mb-3" style={{ minHeight: '32px' }}>
-                                                                            <div
-                                                                                className="d-flex align-items-center gap-1 px-2 py-1 rounded-pill"
-                                                                                style={{
-                                                                                    backgroundColor: `${getUVColor(uvIndex === 0 ? 1 : uvIndex)}20`,
-                                                                                    border: `1px solid ${getUVColor(uvIndex === 0 ? 1 : uvIndex)}40`
-                                                                                }}
-                                                                            >
-                                                                                <Sun size={14} style={{ color: getUVColor(uvIndex === 0 ? 1 : uvIndex) }} />
-                                                                                <span className="fw-medium" style={{ color: getUVColor(uvIndex === 0 ? 1 : uvIndex), fontSize: '0.75rem' }}>
-                                                                                    UV {uvIndex}
-                                                                                </span>
+                                                                        {/* Column 2: Weather Icon + Precipitation % - Fixed width */}
+                                                                        <div
+                                                                            className="d-flex flex-column align-items-center justify-content-center"
+                                                                            style={{
+                                                                                minWidth: '60px',
+                                                                                maxWidth: '60px',
+                                                                                flex: '0 0 auto'
+                                                                            }}
+                                                                        >
+                                                                            <div style={{ marginBottom: '2px' }}>
+                                                                                {getWeatherIcon(weatherCode, 30)}
                                                                             </div>
-                                                                        </div>
-
-                                                                        {/* 7. Sunrise - FIXED */}
-                                                                        <div className="text-white-50 small mb-2" style={{ fontSize: '0.75rem', minHeight: '20px' }}>
-                                                                            🌅 {formatTime(sunrise)}
-                                                                        </div>
-
-                                                                        {/* 8-9. Temperature with Bar - FIXED */}
-                                                                        <div className="d-flex flex-column align-items-center gap-2 my-2">
-                                                                            <span className="fw-bold text-white" style={{ fontSize: '1.4rem' }}>
-                                                                                {maxTemp}°
-                                                                            </span>
-                                                                            <div
-                                                                                className="rounded-pill"
+                                                                            <span
+                                                                                className="fw-bold text-info"
                                                                                 style={{
-                                                                                    width: '4px',
-                                                                                    height: '50px',
-                                                                                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                                                                                    position: 'relative'
+                                                                                    fontSize: '0.8rem',
+                                                                                    lineHeight: 1
                                                                                 }}
                                                                             >
-                                                                                <div
-                                                                                    className="rounded-pill position-absolute"
-                                                                                    style={{
-                                                                                        width: '4px',
-                                                                                        height: '60%',
-                                                                                        top: '20%',
-                                                                                        background: 'linear-gradient(to bottom, #fbbf24, #0ea5e9)'
-                                                                                    }}
-                                                                                ></div>
-                                                                            </div>
-                                                                            <span className="text-white-50" style={{ fontSize: '1rem' }}>
-                                                                                {minTemp}°
+                                                                                {precip > 0 ? `${precip}%` : '—'}
                                                                             </span>
                                                                         </div>
 
-                                                                        {/* 10. Sunset - FIXED */}
-                                                                        <div className="text-white-50 small mt-2" style={{ fontSize: '0.75rem', minHeight: '20px' }}>
-                                                                            🌇 {formatTime(sunset)}
-                                                                        </div>
-                                                                    </>
-                                                                ) : (
-                                                                    /* Compact 7-Day View */
-                                                                    <>
-                                                                        {/* 5. Wind Speed Badge - FIXED SLOT */}
-                                                                        <div className="mb-2" style={{ minHeight: '28px' }}>
-                                                                            {windSpeed > 0 && (
-                                                                                <div
-                                                                                    className="d-flex align-items-center rounded-pill"
-                                                                                    style={{
-                                                                                        backgroundColor: `${getWindColor(windSpeed)}20`,
-                                                                                        border: `1px solid ${getWindColor(windSpeed)}40`,
-                                                                                        fontSize: '0.6rem',
-                                                                                        padding: '2px 6px',
-                                                                                        gap: '3px',
-                                                                                        whiteSpace: 'nowrap'
-                                                                                    }}
-                                                                                >
-                                                                                    <Wind size={11} style={{ color: getWindColor(windSpeed) }} />
-                                                                                    <span className="fw-medium" style={{ color: getWindColor(windSpeed) }}>
-                                                                                        {windSpeed} {getWindDirection(windDir)}
-                                                                                    </span>
-                                                                                </div>
-                                                                            )}
+                                                                        {/* Column 3: Low Temp - Fixed width */}
+                                                                        <div
+                                                                            className="text-white-50 text-end"
+                                                                            style={{
+                                                                                fontSize: '0.9rem',
+                                                                                minWidth: '35px',
+                                                                                maxWidth: '35px',
+                                                                                flex: '0 0 auto'
+                                                                            }}
+                                                                        >
+                                                                            {minTemp}°
                                                                         </div>
 
-                                                                        {/* 6. UV Index - FIXED SLOT - ALWAYS SHOWN (GREEN for UV 0) */}
-                                                                        <div className="mb-2" style={{ minHeight: '24px' }}>
+                                                                        {/* Column 4: Temperature Range Bar - Flexible width */}
+                                                                        <div
+                                                                            className="position-relative"
+                                                                            style={{
+                                                                                flex: 1,
+                                                                                height: '8px',
+                                                                                borderRadius: '4px',
+                                                                                backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                                                                                minWidth: '60px',
+                                                                                maxWidth: '150px'
+                                                                            }}
+                                                                        >
                                                                             <div
-                                                                                className="d-flex align-items-center gap-1 px-2 py-1 rounded-pill"
+                                                                                className="position-absolute rounded"
                                                                                 style={{
-                                                                                    backgroundColor: `${getUVColor(uvIndex === 0 ? 1 : uvIndex)}20`,
-                                                                                    border: `1px solid ${getUVColor(uvIndex === 0 ? 1 : uvIndex)}40`,
-                                                                                    fontSize: '0.65rem'
+                                                                                    left: '15%',
+                                                                                    width: '55%',
+                                                                                    height: '100%',
+                                                                                    background: `linear-gradient(to right, ${getTemperatureColor(minTemp)}, ${getTemperatureColor(maxTemp)})`,
+                                                                                    borderRadius: '4px',
+                                                                                    boxShadow: `0 0 8px ${getTemperatureColor(maxTemp)}40`
                                                                                 }}
                                                                             >
-                                                                                <Sun size={12} style={{ color: getUVColor(uvIndex === 0 ? 1 : uvIndex) }} />
-                                                                                <span className="fw-medium" style={{ color: getUVColor(uvIndex === 0 ? 1 : uvIndex) }}>
-                                                                                    UV {uvIndex}
-                                                                                </span>
-                                                                            </div>
-                                                                        </div>
-
-                                                                        {/* 7. Sunrise - FIXED */}
-                                                                        <div className="text-white-50 small mb-1" style={{ fontSize: '0.65rem', minHeight: '16px' }}>
-                                                                            🌅 {formatTime(sunrise)}
-                                                                        </div>
-
-                                                                        {/* 8-9. Temperature - FIXED */}
-                                                                        <div className="d-flex flex-column align-items-center gap-2 my-1">
-                                                                            <span className="fw-bold text-white" style={{ fontSize: '1rem' }}>
-                                                                                {maxTemp}°
-                                                                            </span>
-                                                                            <div
-                                                                                className="rounded-pill"
-                                                                                style={{
-                                                                                    width: '4px',
-                                                                                    height: '30px',
-                                                                                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                                                                                    position: 'relative'
-                                                                                }}
-                                                                            >
+                                                                                {/* Dot indicator at high temp position */}
                                                                                 <div
-                                                                                    className="rounded-pill position-absolute"
+                                                                                    className="position-absolute rounded-circle"
                                                                                     style={{
-                                                                                        width: '4px',
-                                                                                        height: '60%',
-                                                                                        top: '20%',
-                                                                                        background: 'linear-gradient(to bottom, #fbbf24, #0ea5e9)'
+                                                                                        right: '-5px',
+                                                                                        top: '50%',
+                                                                                        transform: 'translateY(-50%)',
+                                                                                        width: '12px',
+                                                                                        height: '12px',
+                                                                                        backgroundColor: getTemperatureColor(maxTemp),
+                                                                                        border: '2.5px solid rgba(255,255,255,0.9)',
+                                                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
                                                                                     }}
                                                                                 ></div>
                                                                             </div>
-                                                                            <small className="text-white-50" style={{ fontSize: '0.85rem' }}>
-                                                                                {minTemp}°
-                                                                            </small>
                                                                         </div>
 
-                                                                        {/* 10. Sunset - FIXED */}
-                                                                        <div className="text-white-50 small mt-1" style={{ fontSize: '0.65rem', minHeight: '16px' }}>
-                                                                            🌇 {formatTime(sunset)}
+                                                                        {/* Column 5: High Temp - Fixed width, right aligned */}
+                                                                        <div
+                                                                            className="fw-bold text-white text-end"
+                                                                            style={{
+                                                                                fontSize: '1.05rem',
+                                                                                minWidth: '40px',
+                                                                                maxWidth: '40px',
+                                                                                flex: '0 0 auto'
+                                                                            }}
+                                                                        >
+                                                                            {maxTemp}°
                                                                         </div>
-                                                                    </>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })}
+
+
+                                                                        {/* Desktop-only columns: Wind, UV, Sun times */}
+                                                                        <div className="desktop-weather-details d-none d-md-flex align-items-center gap-3 ms-2">
+                                                                            {/* Wind */}
+                                                                            <div className="d-flex align-items-center gap-1 text-white-50" style={{ fontSize: '0.85rem', minWidth: '70px' }}>
+                                                                                <Wind size={14} />
+                                                                                <span>{windSpeed} {getWindArrow(windDir)}</span>
+                                                                            </div>
+
+                                                                            {/* UV Index */}
+                                                                            <div
+                                                                                className="d-flex align-items-center gap-1"
+                                                                                style={{
+                                                                                    fontSize: '0.85rem',
+                                                                                    minWidth: '50px',
+                                                                                    color: uvIndex >= 6 ? '#ff6b6b' : uvIndex >= 3 ? '#ffd93d' : '#6bcf7f'
+                                                                                }}
+                                                                            >
+                                                                                <Sun size={14} />
+                                                                                <span>UV {uvIndex}</span>
+                                                                            </div>
+
+                                                                            {/* Sunrise/Sunset */}
+                                                                            <div className="d-flex align-items-center gap-2 text-white-50" style={{ fontSize: '0.8rem', minWidth: '140px' }}>
+                                                                                <div className="d-flex align-items-center gap-1">
+                                                                                    <Sunrise size={13} />
+                                                                                    <span>{formatTime(sunrise)}</span>
+                                                                                </div>
+                                                                                <div className="d-flex align-items-center gap-1">
+                                                                                    <Sunset size={13} />
+                                                                                    <span>{formatTime(sunset)}</span>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {/* Column 6: Snow indicator (at the end, show only if snow > 0) */}
+                                                                        {snow > 0 && (
+                                                                            <div
+                                                                                className="d-flex align-items-center gap-1"
+                                                                                style={{
+                                                                                    minWidth: '80px',
+                                                                                    fontSize: '0.85rem'
+                                                                                }}
+                                                                            >
+                                                                                <Snowflake size={14} className="text-info" />
+                                                                                <span className="fw-bold text-info">{snow.toFixed(1)} cm</span>
+                                                                            </div>
+                                                                        )}
+
+
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
                                                 </div>
                                             )}
                                         </Card.Body>

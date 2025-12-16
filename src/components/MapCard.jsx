@@ -31,6 +31,42 @@ const MapUpdater = ({ center }) => {
     return null;
 };
 
+// Custom location marker icon - modern blue pin
+const createLocationIcon = () => {
+    return L.divIcon({
+        className: 'custom-location-marker',
+        html: `
+            <svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <filter id="pin-shadow" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur in="SourceAlpha" stdDeviation="1.5"/>
+                        <feOffset dx="0" dy="2" result="offsetblur"/>
+                        <feComponentTransfer>
+                            <feFuncA type="linear" slope="0.4"/>
+                        </feComponentTransfer>
+                        <feMerge>
+                            <feMergeNode/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                </defs>
+                <!-- Glow effect -->
+                <circle cx="18" cy="16" r="11" fill="rgba(59, 130, 246, 0.25)" />
+                <!-- Main pin shape -->
+                <path d="M 18 6 C 13.5 6 9.5 10 9.5 15 C 9.5 21 18 30 18 30 S 26.5 21 26.5 15 C 26.5 10 22.5 6 18 6 Z" 
+                      fill="#3B82F6" stroke="#1E40AF" stroke-width="1.5" filter="url(#pin-shadow)"/>
+                <!-- Inner white circle -->
+                <circle cx="18" cy="15" r="4" fill="white"/>
+                <!-- Eye/center dot -->
+                <circle cx="18" cy="15" r="2" fill="#1E40AF"/>\n            </svg>
+        `,
+        iconSize: [36, 36],
+        iconAnchor: [18, 30],
+        popupAnchor: [0, -30]
+    });
+};
+
+
 // Create custom icon for road events - Moved outside component to prevent recreation
 const createEventIcon = (eventType, description = '') => {
     const typeInfo = parseEventType(eventType, description);
@@ -450,18 +486,21 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
     return (
         <Card className="glass-card border-0 text-white shadow-lg hover-scale transition-all">
             <Card.Body>
-                <div className="d-flex align-items-center justify-content-between mb-3">
-                    <div className="d-flex align-items-center gap-2 text-white-50 text-uppercase fw-bold small">
+                <div className="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between mb-3 gap-2">
+                    <div className="d-flex align-items-center gap-2 text-white-50 text-uppercase fw-bold small" style={{ whiteSpace: 'nowrap' }}>
                         <MapPin size={16} /> Interactive Map
                     </div>
-                    <div className="d-flex align-items-center gap-2">
+
+                    {/* Toggle controls - Horizontal layout on mobile and desktop */}
+                    <div className="d-flex flex-row flex-wrap align-items-center justify-content-end gap-2 w-100 w-md-auto">
                         <Form.Check
                             type="switch"
                             id="avalanche-layer-toggle"
                             label={
                                 <span className="d-flex align-items-center gap-1 small text-white">
                                     <AlertTriangle size={12} />
-                                    Avalanche
+                                    <span className="d-none d-sm-inline">Avalanche</span>
+                                    <span className="d-inline d-sm-none">Avy</span>
                                 </span>
                             }
                             checked={showAvalancheLayer}
@@ -493,7 +532,7 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                             onChange={(e) => setShowTerrainLayer(e.target.checked)}
                             className="text-white"
                         />
-                        <Badge bg="secondary" className="d-flex align-items-center gap-1">
+                        <Badge bg="secondary" className="d-none d-md-flex align-items-center gap-1">
                             <Layers size={12} />
                             OpenStreetMap
                         </Badge>
@@ -542,8 +581,11 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                         {/* DriveBC road events */}
                         {driveBCMarkers}
 
-                        {/* Current location marker */}
-                        <Marker position={center}>
+                        {/* Location marker with custom icon */}
+                        <Marker
+                            position={center}
+                            icon={createLocationIcon()}
+                        >
                             <Popup>
                                 <div style={{ minWidth: '220px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
                                     <div style={{
