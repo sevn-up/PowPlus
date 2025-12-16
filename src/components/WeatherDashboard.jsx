@@ -35,6 +35,7 @@ const WeatherDashboard = () => {
     // Hold-down gesture state for mobile
     const [isHolding, setIsHolding] = useState(false);
     const holdTimerRef = React.useRef(null);
+    const hourlyForecastRef = React.useRef(null);
 
     // Helper function to get UV index color
     const getUVColor = (index) => {
@@ -136,6 +137,23 @@ const WeatherDashboard = () => {
     useEffect(() => {
         fetchWeather('Whistler');
     }, []);
+
+    // Auto-scroll to current hour when weather data loads
+    useEffect(() => {
+        if (weather && hourlyForecastRef.current) {
+            // Small delay to ensure DOM is fully rendered
+            setTimeout(() => {
+                const currentHourCard = hourlyForecastRef.current?.querySelector('[data-current="true"]');
+                if (currentHourCard) {
+                    currentHourCard.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'nearest',
+                        inline: 'center'
+                    });
+                }
+            }, 300);
+        }
+    }, [weather]);
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -351,17 +369,47 @@ const WeatherDashboard = () => {
                                         </div>
                                     </div>
 
-                                    <div className="hourly-forecast-container d-flex gap-3 overflow-auto pb-2 scrollbar-hide">
+                                    <div
+                                        ref={hourlyForecastRef}
+                                        className="hourly-forecast-container d-flex gap-3 overflow-auto pb-2 scrollbar-hide"
+                                    >
                                         {weather.hourly.time.slice(0, 24).map((time, idx) => {
                                             const hourTime = new Date(time);
                                             const currentHour = hourTime.getHours();
-                                            const isNow = idx === 0;
+
+                                            // Determine if this is the actual current hour
+                                            const now = new Date();
+                                            const isCurrentHour = hourTime.getHours() === now.getHours() &&
+                                                hourTime.getDate() === now.getDate();
 
                                             // Check if this hour contains sunrise or sunset
                                             const sunrise = weather.daily.sunrise ? new Date(weather.daily.sunrise[0]) : null;
                                             const sunset = weather.daily.sunset ? new Date(weather.daily.sunset[0]) : null;
                                             const isSunriseHour = sunrise && sunrise.getHours() === currentHour;
                                             const isSunsetHour = sunset && sunset.getHours() === currentHour;
+
+                                            // Format time with AM/PM and handle sunrise/sunset exact times
+                                            const hour12 = currentHour === 0 ? 12 : (currentHour > 12 ? currentHour - 12 : currentHour);
+                                            const ampm = currentHour >= 12 ? 'PM' : 'AM';
+
+                                            let timeLabel;
+                                            if (isCurrentHour) {
+                                                timeLabel = 'NOW';
+                                            } else if (isSunriseHour && sunrise) {
+                                                const sunriseHour = sunrise.getHours();
+                                                const sunriseMinute = sunrise.getMinutes();
+                                                const sunriseHour12 = sunriseHour === 0 ? 12 : (sunriseHour > 12 ? sunriseHour - 12 : sunriseHour);
+                                                const sunriseAmpm = sunriseHour >= 12 ? 'PM' : 'AM';
+                                                timeLabel = `${sunriseHour12}:${sunriseMinute.toString().padStart(2, '0')}${sunriseAmpm}`;
+                                            } else if (isSunsetHour && sunset) {
+                                                const sunsetHour = sunset.getHours();
+                                                const sunsetMinute = sunset.getMinutes();
+                                                const sunsetHour12 = sunsetHour === 0 ? 12 : (sunsetHour > 12 ? sunsetHour - 12 : sunsetHour);
+                                                const sunsetAmpm = sunsetHour >= 12 ? 'PM' : 'AM';
+                                                timeLabel = `${sunsetHour12}:${sunsetMinute.toString().padStart(2, '0')}${sunsetAmpm}`;
+                                            } else {
+                                                timeLabel = `${hour12}${ampm}`;
+                                            }
 
                                             // Get weather data for this hour
                                             const temp = Math.round(weather.hourly.temperature_2m[idx]);
@@ -390,8 +438,10 @@ const WeatherDashboard = () => {
                                                 <div
                                                     key={idx}
                                                     className="hourly-forecast-card d-flex flex-column align-items-center gap-2 position-relative"
+                                                    data-current={isCurrentHour ? 'true' : 'false'}
+                                                    data-hour-index={idx}
                                                     style={{
-                                                        minWidth: '95px',
+                                                        minWidth: '110px',
                                                         padding: '0.75rem 0.5rem',
                                                         borderRadius: '1rem',
                                                         background: (isSunriseHour || isSunsetHour)
@@ -399,9 +449,12 @@ const WeatherDashboard = () => {
                                                             : (isDay
                                                                 ? 'linear-gradient(180deg, rgba(135, 206, 235, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)'
                                                                 : 'linear-gradient(180deg, rgba(25, 25, 112, 0.15) 0%, rgba(0, 0, 0, 0.1) 100%)'),
-                                                        border: isNow
-                                                            ? '2px solid rgba(59, 130, 246, 0.5)'
+                                                        border: isCurrentHour
+                                                            ? '2px solid rgba(59, 130, 246, 0.8)'
                                                             : ((isSunriseHour || isSunsetHour) ? '2px solid rgba(251, 191, 36, 0.5)' : 'none'),
+                                                        boxShadow: isCurrentHour
+                                                            ? '0 0 20px rgba(59, 130, 246, 0.4), 0 0 40px rgba(59, 130, 246, 0.2)'
+                                                            : 'none',
                                                         transition: 'all 0.2s ease',
                                                         cursor: 'pointer'
                                                     }}
@@ -417,17 +470,16 @@ const WeatherDashboard = () => {
                                                     onClick={() => handleHourClick(idx)}
                                                 >
                                                     {/* Hour label */}
-                                                    {/* Hour label with sunrise/sunset inline */}
-                                                    {/* Hour label */}
                                                     <div style={{ minHeight: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                         <small
                                                             className="fw-bold"
                                                             style={{
-                                                                color: isNow ? '#3b82f6' : ((isSunriseHour || isSunsetHour) ? '#fbbf24' : '#fff'),
-                                                                fontSize: '0.75rem'
+                                                                color: isCurrentHour ? '#3b82f6' : ((isSunriseHour || isSunsetHour) ? '#fbbf24' : '#fff'),
+                                                                fontSize: isCurrentHour ? '0.7rem' : '0.65rem',
+                                                                letterSpacing: isCurrentHour ? '0.5px' : 'normal'
                                                             }}
                                                         >
-                                                            {isNow ? 'Now' : currentHour}
+                                                            {timeLabel}
                                                         </small>
                                                     </div>
 
