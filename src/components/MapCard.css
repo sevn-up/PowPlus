@@ -123,3 +123,66 @@
     cursor: pointer;
     user-select: none;
 }
+
+/* Custom location marker styling */
+.custom-location-marker {
+    background: transparent !important;
+    border: none !important;
+    overflow: visible !important;
+}
+
+.custom-location-marker svg {
+    filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.3));
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+
+    /* Increase map height on mobile for better visibility */
+    .map-container {
+        height: 450px !important;
+    }
+
+    /* Ensure toggles are thumb-friendly (44px minimum) */
+    .form-check {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+
+    /* Slightly smaller labels on mobile but still readable */
+    .form-check-label {
+        font-size: 0.875rem;
+        padding: 0.5rem 0;
+    }
+
+    /* Larger switch for easier tapping */
+    .form-check-input {
+        width: 2.5rem;
+        height: 1.25rem;
+    }
+
+    /* Better spacing for map controls on mobile */
+    .leaflet-control-zoom {
+        margin-bottom: 60px !important;
+        /* Keep away from bottom gesture area */
+    }
+
+    /* Ensure attribution doesn't overlap controls */
+    .leaflet-control-attribution {
+        font-size: 9px;
+        max-width: 70%;
+    }
+}
+
+/* Ensure map is responsive at all sizes */
+.map-container {
+    width: 100%;
+    position: relative;
+}
+
+/* Prevent map from causing horizontal scroll */
+.leaflet-container {
+    max-width: 100%;
+    overflow: hidden;
+}

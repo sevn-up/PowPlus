@@ -120,3 +120,88 @@ body {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05);
 }
+
+/* ============================================ */
+/* Mobile & Responsive Optimizations */
+/* ============================================ */
+
+/* Prevent horizontal scroll globally */
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Mobile-specific optimizations */
+@media (max-width: 768px) {
+  body {
+    min-width: 375px;
+    /* Prevent sub-mobile widths */
+  }
+
+  /* Reduce glass effects on mobile for performance */
+  .glass-card {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .glass-sidebar {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  /* Mobile-friendly scrolling */
+  .overflow-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Reduce hover effects on mobile (they don't work well) */
+  .hover-scale:hover {
+    transform: none;
+  }
+
+  /* Better touch feedback - use active state instead */
+  .hover-scale:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+}
+
+/* Tap target enforcement for all interactive elements on mobile */
+@media (max-width: 768px) {
+
+  button,
+  .btn,
+  a.btn,
+  .form-check,
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Reset tap targets for desktop */
+@media (min-width: 769px) {
+
+  button,
+  .btn,
+  a.btn {
+    min-height: auto;
+    min-width: auto;
+  }
+}
+
+/* Ensure cards don't cause horizontal overflow */
+.card,
+.glass-card {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Mobile-friendly spacing for containers */
+@media (max-width: 768px) {
+  .container-fluid {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
