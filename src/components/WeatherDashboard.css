@@ -1,5 +1,23 @@
 /* Hourly Forecast Card Enhancements */
 
+/* Pulsing glow animation for current hour */
+@keyframes pulse-glow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.4), 0 0 40px rgba(59, 130, 246, 0.2);
+    }
+
+    50% {
+        box-shadow: 0 0 30px rgba(59, 130, 246, 0.6), 0 0 60px rgba(59, 130, 246, 0.3);
+    }
+}
+
+/* Current hour indicator styling */
+.hourly-forecast-card[data-current="true"] {
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
 /* Smooth hover effects for hourly cards (desktop only) */
 @media (min-width: 769px) {
     .hourly-forecast-card {
@@ -9,6 +27,11 @@
     .hourly-forecast-card:hover {
         transform: translateY(-4px);
         box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Don't animate current hour on hover - keep pulsing */
+    .hourly-forecast-card[data-current="true"]:hover {
+        transform: translateY(-2px);
     }
 }
 
@@ -20,12 +43,53 @@
     }
 }
 
-/* Ensure hourly forecast strip doesn't cause horizontal scroll */
+/* Hourly forecast container with scroll-snap */
 .hourly-forecast-container {
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
+    scroll-snap-type: x proximity;
+    scroll-padding: 1rem;
+}
+
+/* Snap cards to container on mobile for easier browsing */
+@media (max-width: 768px) {
+    .hourly-forecast-card {
+        scroll-snap-align: center;
+    }
+}
+
+/* Hide scrollbar on mobile but keep functionality */
+@media (max-width: 768px) {
+    .hourly-forecast-container::-webkit-scrollbar {
+        display: none;
+    }
+
+    .hourly-forecast-container {
+        scrollbar-width: none;
+    }
+}
+
+/* Desktop scrollbar styling */
+@media (min-width: 769px) {
+    .hourly-forecast-container::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    .hourly-forecast-container::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 3px;
+    }
+
+    .hourly-forecast-container::-webkit-scrollbar-thumb {
+        background: rgba(59, 130, 246, 0.4);
+        border-radius: 3px;
+    }
+
+    .hourly-forecast-container::-webkit-scrollbar-thumb:hover {
+        background: rgba(59, 130, 246, 0.6);
+    }
 }
 
 /* Hide scrollbar on mobile but keep functionality */
