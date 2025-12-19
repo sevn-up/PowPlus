@@ -208,15 +208,15 @@ export const locations = [
         name: 'Kees and Claire Hut',
         displayName: 'Kees and Claire Hut',
         type: locationTypes.BACKCOUNTRY,
-        region: 'Interior',
-        coordinates: { lat: 50.7833, lon: -117.3167 },
+        region: 'Coast Mountains',
+        coordinates: { lat: 50.1167, lon: -123.1500 },
         elevation: { base: 2100, summit: 2800 },
-        avalancheZone: 'North Columbia',
+        avalancheZone: 'Sea-to-Sky',
         backcountryInfo: {
             difficulty: 'Advanced',
-            access: 'Helicopter access from Revelstoke',
+            access: 'Helicopter or ski access from Squamish',
             permits: 'Hut booking required',
-            description: 'Remote ACC hut in Selkirk Mountains'
+            description: 'Remote ACC hut in Tantalus Range behind Whistler'
         }
     },
     {

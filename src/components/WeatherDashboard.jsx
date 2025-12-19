@@ -139,7 +139,8 @@ const WeatherDashboard = () => {
     }, []);
 
     // Auto-scroll to current hour when weather data loads
-    useEffect(() => {
+    // DISABLED: User doesn't want auto-scroll behavior  
+    /* useEffect(() => {
         if (weather && hourlyForecastRef.current) {
             // Small delay to ensure DOM is fully rendered
             setTimeout(() => {
@@ -153,7 +154,7 @@ const WeatherDashboard = () => {
                 }
             }, 300);
         }
-    }, [weather]);
+    }, [weather]); */
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -657,11 +658,26 @@ const WeatherDashboard = () => {
                                             <div className="d-flex align-items-center gap-2 text-white-50 text-uppercase fw-bold small">
                                                 <AlertTriangle size={16} /> Avalanche Forecast
                                             </div>
-                                            {avalancheForecast.area?.name && !avalancheForecast.area.name.match(/^[0-9a-f]{64}$/) && (
-                                                <Badge bg="secondary">
-                                                    {avalancheForecast.area.name}
-                                                </Badge>
-                                            )}
+                                        </div>
+
+                                        {/* Show forecast area name prominently */}
+                                        <div className="mb-3">
+                                            <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                                                <div className="d-flex flex-column">
+                                                    <small className="text-white-50" style={{ fontSize: '0.7rem' }}>Forecast Area</small>
+                                                    <Badge bg="info" className="text-dark fw-bold" style={{ fontSize: '0.85rem' }}>
+                                                        {avalancheForecast.area?.name || currentLocation.avalancheZone}
+                                                    </Badge>
+                                                </div>
+                                                {currentLocation.avalancheZone && (
+                                                    <div className="d-flex flex-column align-items-end">
+                                                        <small className="text-white-50" style={{ fontSize: '0.7rem' }}>Location Zone</small>
+                                                        <small className="text-white" style={{ fontSize: '0.75rem' }}>
+                                                            {currentLocation.avalancheZone}
+                                                        </small>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {avalancheForecast.report.dangerRatings && avalancheForecast.report.dangerRatings[0] && (
