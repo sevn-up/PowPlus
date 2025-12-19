@@ -8,7 +8,7 @@ import TabNavigation from './components/TabNavigation';
 
 function App() {
   return (
-    <Router>
+    <Router basename="/PowPlus">
       <div className="app-container">
         {/* Tab Navigation - shows on all pages */}
         <TabNavigation />
