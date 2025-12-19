@@ -4,7 +4,7 @@ import { Search, Snowflake, Wind, Thermometer, Mountain, MapPin, Calendar, Dropl
 import { getCoordinates, getWeather, getWeatherDescription } from '../services/weatherApi';
 import { getClosestAvalancheForecast, parseDangerRating, formatHighlights } from '../services/avalancheApi';
 import { calculatePowderScore, calculateSnowfallTotal, getBestSkiingWindow } from '../services/powderTracker';
-import { locations, getLocationByName, getResorts, getBackcountryZones } from '../data/locationData';
+import { locations, getLocationByName, getResorts, getBackcountryZones, getLocationsByRegion, getRegions } from '../data/locationData';
 import AvalancheDetailModal from './AvalancheDetailModal';
 import AnimatedBackground from './AnimatedBackground';
 import MapCard from './MapCard';
@@ -196,49 +196,61 @@ const WeatherDashboard = () => {
                     </div>
 
                     <div className="flex-grow-1 overflow-auto custom-scrollbar">
-                        <small className="text-uppercase text-white-50 fw-bold mb-3 d-block px-2">Ski Resorts</small>
-                        <div className="d-flex flex-column gap-2 mb-4">
-                            {getResorts().map((loc) => (
-                                <Button
-                                    key={loc.name}
-                                    variant="link"
-                                    onClick={() => fetchWeather(loc.name)}
-                                    className={`text-decoration-none text-start px-3 py-2 rounded-4 d-flex justify-content-between align-items-center transition-all hover-scale ${town === loc.name ? 'bg-primary bg-opacity-50 text-white shadow-md' : 'text-white-50 hover-bg-white-10'}`}
-                                >
-                                    <div className="d-flex flex-column">
-                                        <span className="fw-medium">{loc.name}</span>
-                                        {loc.resortInfo && (
-                                            <small className="text-white-50" style={{ fontSize: '0.7rem' }}>
-                                                {loc.resortInfo.verticalDrop}m vertical
-                                            </small>
-                                        )}
-                                    </div>
-                                    {town === loc.name && <div className="bg-white rounded-circle shadow-sm" style={{ width: '8px', height: '8px' }}></div>}
-                                </Button>
-                            ))}
-                        </div>
+                        {getRegions().map((region) => {
+                            const regionLocations = getLocationsByRegion(region);
+                            const regionCount = regionLocations.length;
 
-                        <small className="text-uppercase text-white-50 fw-bold mb-3 d-block px-2">Backcountry</small>
-                        <div className="d-flex flex-column gap-2">
-                            {getBackcountryZones().map((loc) => (
-                                <Button
-                                    key={loc.name}
-                                    variant="link"
-                                    onClick={() => fetchWeather(loc.name)}
-                                    className={`text-decoration-none text-start px-3 py-2 rounded-4 d-flex justify-content-between align-items-center transition-all hover-scale ${town === loc.name ? 'bg-primary bg-opacity-50 text-white shadow-md' : 'text-white-50 hover-bg-white-10'}`}
-                                >
-                                    <div className="d-flex flex-column">
-                                        <span className="fw-medium">{loc.name}</span>
-                                        {loc.backcountryInfo && (
-                                            <small className="text-white-50" style={{ fontSize: '0.7rem' }}>
-                                                {loc.backcountryInfo.difficulty}
-                                            </small>
-                                        )}
+                            // Region icon mapping
+                            const regionIcons = {
+                                'Coast Mountains': '🏔️',
+                                'Interior': '⛰️',
+                                'Rockies': '🗻',
+                                'North BC': '🌲'
+                            };
+
+                            return (
+                                <div key={region} className="mb-4">
+                                    <div className="d-flex align-items-center justify-content-between mb-2 px-2">
+                                        <small className="text-uppercase text-white-50 fw-bold d-flex align-items-center gap-2">
+                                            <span>{regionIcons[region]}</span>
+                                            <span>{region}</span>
+                                        </small>
+                                        <Badge bg="secondary" className="bg-opacity-50 text-white">{regionCount}</Badge>
                                     </div>
-                                    {town === loc.name && <div className="bg-white rounded-circle shadow-sm" style={{ width: '8px', height: '8px' }}></div>}
-                                </Button>
-                            ))}
-                        </div>
+                                    <div className="d-flex flex-column gap-2">
+                                        {regionLocations.map((loc) => (
+                                            <Button
+                                                key={loc.name}
+                                                variant="link"
+                                                onClick={() => fetchWeather(loc.name)}
+                                                className={`text-decoration-none text-start px-3 py-2 rounded-4 d-flex justify-content-between align-items-center transition-all hover-scale ${town === loc.name
+                                                    ? 'bg-primary bg-opacity-50 text-white shadow-md'
+                                                    : 'text-white-50 hover-bg-white-10'
+                                                    }`}
+                                            >
+                                                <div className="d-flex flex-column">
+                                                    <div className="d-flex align-items-center gap-2">
+                                                        <span className="fw-medium">{loc.name}</span>
+                                                        {loc.type === 'resort' && <span style={{ fontSize: '0.65rem' }}>🎿</span>}
+                                                    </div>
+                                                    {(loc.resortInfo || loc.backcountryInfo) && (
+                                                        <small className="text-white-50" style={{ fontSize: '0.7rem' }}>
+                                                            {loc.resortInfo
+                                                                ? `${loc.resortInfo.verticalDrop}m vertical`
+                                                                : loc.backcountryInfo.difficulty
+                                                            }
+                                                        </small>
+                                                    )}
+                                                </div>
+                                                {town === loc.name && (
+                                                    <div className="bg-white rounded-circle shadow-sm" style={{ width: '8px', height: '8px' }}></div>
+                                                )}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -265,25 +277,54 @@ const WeatherDashboard = () => {
                                 <Form onSubmit={handleSearch} className="mb-4 position-relative">
                                     <Form.Control
                                         type="text"
-                                        placeholder="Search..."
+                                        placeholder="Search locations..."
                                         value={town}
                                         onChange={(e) => setTown(e.target.value)}
                                         className="bg-secondary bg-opacity-25 text-white border-0 rounded-pill ps-5"
                                     />
                                     <Search className="position-absolute top-50 start-0 translate-middle-y ms-3 text-white-50" size={16} />
                                 </Form>
-                                <div className="d-flex flex-column gap-2">
-                                    {savedLocations.map((loc) => (
-                                        <Button
-                                            key={loc}
-                                            variant="link"
-                                            onClick={() => fetchWeather(loc)}
-                                            className="text-decoration-none text-white text-start px-0 fs-5"
-                                        >
-                                            {loc}
-                                        </Button>
-                                    ))}
-                                </div>
+
+                                {/* Regional Navigation */}
+                                {getRegions().map((region) => {
+                                    const regionLocations = getLocationsByRegion(region);
+                                    const regionCount = regionLocations.length;
+
+                                    const regionIcons = {
+                                        'Coast Mountains': '🏔️',
+                                        'Interior': '⛰️',
+                                        'Rockies': '🗻',
+                                        'North BC': '🌲'
+                                    };
+
+                                    return (
+                                        <div key={region} className="mb-4">
+                                            <div className="d-flex align-items-center justify-content-between mb-2">
+                                                <small className="text-uppercase text-white-50 fw-bold d-flex align-items-center gap-2">
+                                                    <span>{regionIcons[region]}</span>
+                                                    <span>{region}</span>
+                                                </small>
+                                                <Badge bg="secondary" className="bg-opacity-50 text-white">{regionCount}</Badge>
+                                            </div>
+                                            <div className="d-flex flex-column gap-2">
+                                                {regionLocations.map((loc) => (
+                                                    <Button
+                                                        key={loc.name}
+                                                        variant="link"
+                                                        onClick={() => fetchWeather(loc.name)}
+                                                        className={`text-decoration-none text-start px-2 py-2 rounded-3 ${town === loc.name ? 'bg-primary bg-opacity-25 text-white' : 'text-white-50'
+                                                            }`}
+                                                    >
+                                                        <div className="d-flex align-items-center gap-2">
+                                                            <span className="fw-medium">{loc.name}</span>
+                                                            {loc.type === 'resort' && <span style={{ fontSize: '0.65rem' }}>🎿</span>}
+                                                        </div>
+                                                    </Button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </Offcanvas.Body>
                         </Navbar.Offcanvas>
                     </Container>

@@ -1,17 +1,53 @@
 const AVALANCHE_BASE = 'https://api.avalanche.ca';
 
+// In-memory cache with TTL
+const cache = {
+    products: { data: null, timestamp: null },
+    areas: { data: null, timestamp: null },
+    metadata: { data: null, timestamp: null }
+};
+
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes in milliseconds
+
+/**
+ * Check if cached data is still valid
+ */
+const isCacheValid = (timestamp) => {
+    if (!timestamp) return false;
+    return (Date.now() - timestamp) < CACHE_TTL;
+};
+
 /**
  * Fetch all avalanche forecast products
  * @param {string} lang - Language code ('en' or 'fr')
  * @returns {Promise<Array>} Array of forecast products
  */
 export const getAvalancheForecastProducts = async (lang = 'en') => {
+    // Check cache first
+    if (isCacheValid(cache.products.timestamp)) {
+        console.log('Avalanche products loaded from cache');
+        return cache.products.data;
+    }
+
     try {
         const response = await fetch(`${AVALANCHE_BASE}/forecasts/${lang}/products`);
         if (!response.ok) throw new Error('Failed to fetch avalanche forecast products');
-        return await response.json();
+        const data = await response.json();
+
+        // Update cache
+        cache.products = {
+            data,
+            timestamp: Date.now()
+        };
+
+        return data;
     } catch (error) {
         console.error('Avalanche API error:', error);
+        // Return cached data if available, even if expired
+        if (cache.products.data) {
+            console.log('Returning expired cache due to error');
+            return cache.products.data;
+        }
         return null;
     }
 };
@@ -22,12 +58,31 @@ export const getAvalancheForecastProducts = async (lang = 'en') => {
  * @returns {Promise<Object>} GeoJSON FeatureCollection of forecast areas
  */
 export const getAvalancheForecastAreas = async (lang = 'en') => {
+    // Check cache first
+    if (isCacheValid(cache.areas.timestamp)) {
+        console.log('Avalanche areas loaded from cache');
+        return cache.areas.data;
+    }
+
     try {
         const response = await fetch(`${AVALANCHE_BASE}/forecasts/${lang}/areas`);
         if (!response.ok) throw new Error('Failed to fetch avalanche forecast areas');
-        return await response.json();
+        const data = await response.json();
+
+        // Update cache
+        cache.areas = {
+            data,
+            timestamp: Date.now()
+        };
+
+        return data;
     } catch (error) {
         console.error('Avalanche API error:', error);
+        // Return cached data if available, even if expired
+        if (cache.areas.data) {
+            console.log('Returning expired cache due to error');
+            return cache.areas.data;
+        }
         return null;
     }
 };
@@ -38,12 +93,31 @@ export const getAvalancheForecastAreas = async (lang = 'en') => {
  * @returns {Promise<Object>} Forecast metadata including danger ratings
  */
 export const getAvalancheForecastMetadata = async (lang = 'en') => {
+    // Check cache first
+    if (isCacheValid(cache.metadata.timestamp)) {
+        console.log('Avalanche metadata loaded from cache');
+        return cache.metadata.data;
+    }
+
     try {
         const response = await fetch(`${AVALANCHE_BASE}/forecasts/${lang}/metadata`);
         if (!response.ok) throw new Error('Failed to fetch avalanche forecast metadata');
-        return await response.json();
+        const data = await response.json();
+
+        // Update cache
+        cache.metadata = {
+            data,
+            timestamp: Date.now()
+        };
+
+        return data;
     } catch (error) {
         console.error('Avalanche API error:', error);
+        // Return cached data if available, even if expired
+        if (cache.metadata.data) {
+            console.log('Returning expired cache due to error');
+            return cache.metadata.data;
+        }
         return null;
     }
 };
