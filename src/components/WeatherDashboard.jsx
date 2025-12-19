@@ -1263,7 +1263,7 @@ const WeatherDashboard = () => {
                                                                             <div
                                                                                 className="d-flex align-items-center gap-1"
                                                                                 style={{
-                                                                                    minWidth: '80px',
+                                                                                    minWidth: '50px',
                                                                                     fontSize: '0.85rem'
                                                                                 }}
                                                                             >
