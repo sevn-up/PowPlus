@@ -219,10 +219,10 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
     // Popup content for avalanche areas - Memoized - MEMORY LEAK FIX: Added cleanup
     const onEachAvalancheFeature = useCallback((feature, layer) => {
         const areaId = feature.id;
-        const areaName = feature.properties?.name || 'Unknown Area';
 
         // Get the full product for this area to access all danger ratings
         const product = avalancheProducts?.find(p => p.area?.id === areaId);
+        const areaName = product?.report?.title || 'Unknown Area';  // FIX: Use report.title for human-readable name
         const dangerRatings = product?.report?.dangerRatings?.[0]?.ratings;
 
         if (dangerRatings) {
@@ -600,7 +600,7 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                                     <div style={{ marginBottom: '8px' }}>
                                         <div style={{ fontSize: '11px', color: '#ddd', marginBottom: '4px', textTransform: 'uppercase', fontWeight: '600' }}>Coordinates</div>
                                         <div style={{ fontSize: '12px', color: '#f0f0f0', fontFamily: 'monospace' }}>
-                                            {center[0].toFixed(4)}°N, {center[1].toFixed(4)}°W
+                                            {center[0].toFixed(4)}°N, {Math.abs(center[1]).toFixed(4)}°W
                                         </div>
                                     </div>
 
@@ -618,12 +618,17 @@ const MapCard = ({ location, coordinates, avalancheForecast }) => {
                                         <div style={{
                                             marginTop: '10px',
                                             padding: '8px 12px',
-                                            backgroundColor: '#D84315',
+                                            background: 'linear-gradient(135deg, rgba(216, 67, 21, 0.3), rgba(255, 111, 0, 0.2))',
+                                            border: '1px solid rgba(255, 111, 0, 0.4)',
                                             borderLeft: '4px solid #FF6F00',
-                                            borderRadius: '4px'
+                                            borderRadius: '4px',
+                                            backdropFilter: 'blur(10px)'
                                         }}>
                                             <div style={{ fontSize: '10px', color: '#FFE0B2', fontWeight: '600', marginBottom: '3px', letterSpacing: '0.5px' }}>AVALANCHE ZONE</div>
-                                            <div style={{ fontSize: '13px', color: '#FFFFFF', fontWeight: '600' }}>{location.avalancheZone}</div>
+                                            <div style={{ fontSize: '13px', color: '#FFFFFF', fontWeight: '600' }}>
+                                                {/* Show actual forecast area name if available, otherwise show zone ID */}
+                                                {avalancheForecast?.report?.title || location.avalancheZone}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
