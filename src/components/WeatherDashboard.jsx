@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Form, Button, Navbar, Nav, Offcanvas, Badge, Alert } from 'react-bootstrap';
-import { Search, Snowflake, Wind, Thermometer, Mountain, MapPin, Calendar, Droplets, Sun, Menu, Eye, Ruler, AlertTriangle, TrendingUp, CloudSnow, Sunrise, Sunset, Cloud, CloudRain, CloudDrizzle, CloudFog, Zap, ArrowUp, Navigation } from 'lucide-react';
+import { Search, Snowflake, Wind, Thermometer, Mountain, MapPin, Calendar, Droplets, Sun, Menu, Eye, Ruler, AlertTriangle, TrendingUp, CloudSnow, Sunrise, Sunset, Cloud, CloudRain, CloudDrizzle, CloudFog, Zap, ArrowUp, Navigation, ChevronDown, ChevronUp } from 'lucide-react';
 import { getCoordinates, getWeather, getWeatherDescription } from '../services/weatherApi';
 import { getClosestAvalancheForecast, parseDangerRating, formatHighlights } from '../services/avalancheApi';
 import { calculatePowderScore, calculateSnowfallTotal, getBestSkiingWindow } from '../services/powderTracker';
@@ -36,6 +36,16 @@ const WeatherDashboard = () => {
     const [isHolding, setIsHolding] = useState(false);
     const holdTimerRef = React.useRef(null);
     const hourlyForecastRef = React.useRef(null);
+
+    // Track which regions are expanded (all expanded by default)
+    const [expandedRegions, setExpandedRegions] = useState(() => {
+        const regions = getRegions();
+        return regions.reduce((acc, region) => ({ ...acc, [region]: true }), {});
+    });
+
+    const toggleRegion = (region) => {
+        setExpandedRegions(prev => ({ ...prev, [region]: !prev[region] }));
+    };
 
     // Helper function to get UV index color
     const getUVColor = (index) => {
@@ -209,47 +219,59 @@ const WeatherDashboard = () => {
                             };
 
                             return (
-                                <div key={region} className="mb-4">
-                                    <div className="d-flex align-items-center justify-content-between mb-2 px-2">
-                                        <small className="text-uppercase text-white-50 fw-bold d-flex align-items-center gap-2">
-                                            <span>{regionIcons[region]}</span>
-                                            <span>{region}</span>
-                                        </small>
-                                        <Badge bg="secondary" className="bg-opacity-50 text-white">{regionCount}</Badge>
+                                <div key={region} className="mb-3">
+                                    <div
+                                        className="d-flex align-items-center justify-content-between mb-2 px-2 py-1 rounded-3 hover-bg-white-10 cursor-pointer transition-all"
+                                        onClick={() => toggleRegion(region)}
+                                        style={{ cursor: 'pointer' }}
+                                    >
+                                        <div className="d-flex align-items-center gap-2">
+                                            <small className="text-uppercase text-white-50 fw-bold d-flex align-items-center gap-2">
+                                                <span>{regionIcons[region]}</span>
+                                                <span>{region}</span>
+                                            </small>
+                                            <Badge bg="secondary" className="bg-opacity-50 text-white">{regionCount}</Badge>
+                                        </div>
+                                        {expandedRegions[region] ?
+                                            <ChevronUp size={16} className="text-white-50" /> :
+                                            <ChevronDown size={16} className="text-white-50" />
+                                        }
                                     </div>
-                                    <div className="d-flex flex-column gap-2">
-                                        {regionLocations.map((loc) => (
-                                            <Button
-                                                key={loc.name}
-                                                variant="link"
-                                                onClick={() => fetchWeather(loc.name)}
-                                                className={`text-decoration-none text-start px-3 py-2 rounded-4 d-flex justify-content-between align-items-center transition-all hover-scale ${town === loc.name
-                                                    ? 'bg-primary bg-opacity-50 text-white shadow-md'
-                                                    : 'text-white-50 hover-bg-white-10'
-                                                    }`}
-                                            >
-                                                <div className="d-flex flex-column">
-                                                    <div className="d-flex align-items-center gap-2">
-                                                        <span className="fw-medium">{loc.name}</span>
-                                                        {loc.type === 'resort' && <span style={{ fontSize: '0.65rem' }}>🎿</span>}
+                                    {expandedRegions[region] && (
+                                        <div className="d-flex flex-column gap-2">
+                                            {regionLocations.map((loc) => (
+                                                <Button
+                                                    key={loc.name}
+                                                    variant="link"
+                                                    onClick={() => fetchWeather(loc.name)}
+                                                    className={`text-decoration-none text-start px-3 py-2 rounded-4 d-flex justify-content-between align-items-center transition-all hover-scale ${town === loc.name
+                                                        ? 'bg-primary bg-opacity-50 text-white shadow-md'
+                                                        : 'text-white-50 hover-bg-white-10'
+                                                        }`}
+                                                >
+                                                    <div className="d-flex flex-column">
+                                                        <div className="d-flex align-items-center gap-2">
+                                                            <span className="fw-medium">{loc.name}</span>
+                                                            {loc.type === 'resort' && <span style={{ fontSize: '0.65rem' }}>🎿</span>}
+                                                        </div>
+                                                        {(loc.resortInfo || loc.backcountryInfo) && (
+                                                            <small className="text-white-50" style={{ fontSize: '0.7rem' }}>
+                                                                {loc.resortInfo
+                                                                    ? `${loc.resortInfo.verticalDrop}m vertical`
+                                                                    : loc.elevation
+                                                                        ? `${loc.elevation.base}-${loc.elevation.summit}m`
+                                                                        : 'Elevation data unavailable'
+                                                                }
+                                                            </small>
+                                                        )}
                                                     </div>
-                                                    {(loc.resortInfo || loc.backcountryInfo) && (
-                                                        <small className="text-white-50" style={{ fontSize: '0.7rem' }}>
-                                                            {loc.resortInfo
-                                                                ? `${loc.resortInfo.verticalDrop}m vertical`
-                                                                : loc.elevation
-                                                                    ? `${loc.elevation.base}-${loc.elevation.summit}m`
-                                                                    : 'Elevation data unavailable'
-                                                            }
-                                                        </small>
+                                                    {town === loc.name && (
+                                                        <div className="bg-white rounded-circle shadow-sm" style={{ width: '8px', height: '8px' }}></div>
                                                     )}
-                                                </div>
-                                                {town === loc.name && (
-                                                    <div className="bg-white rounded-circle shadow-sm" style={{ width: '8px', height: '8px' }}></div>
-                                                )}
-                                            </Button>
-                                        ))}
-                                    </div>
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
@@ -296,44 +318,57 @@ const WeatherDashboard = () => {
                                         'Coast Mountains': '🏔️',
                                         'Interior': '⛰️',
                                         'Rockies': '🗻',
+                                        'Alberta Rockies': '🏔️',
                                         'North BC': '🌲'
                                     };
 
                                     return (
-                                        <div key={region} className="mb-4">
-                                            <div className="d-flex align-items-center justify-content-between mb-2">
-                                                <small className="text-uppercase text-white-50 fw-bold d-flex align-items-center gap-2">
-                                                    <span>{regionIcons[region]}</span>
-                                                    <span>{region}</span>
-                                                </small>
-                                                <Badge bg="secondary" className="bg-opacity-50 text-white">{regionCount}</Badge>
+                                        <div key={region} className="mb-3">
+                                            <div
+                                                className="d-flex align-items-center justify-content-between mb-2 px-2 py-2 rounded-3 bg-secondary bg-opacity-10 cursor-pointer"
+                                                onClick={() => toggleRegion(region)}
+                                                style={{ cursor: 'pointer' }}
+                                            >
+                                                <div className="d-flex align-items-center gap-2">
+                                                    <small className="text-uppercase text-white-50 fw-bold d-flex align-items-center gap-2">
+                                                        <span>{regionIcons[region]}</span>
+                                                        <span>{region}</span>
+                                                    </small>
+                                                    <Badge bg="secondary" className="bg-opacity-50 text-white">{regionCount}</Badge>
+                                                </div>
+                                                {expandedRegions[region] ?
+                                                    <ChevronUp size={16} className="text-white-50" /> :
+                                                    <ChevronDown size={16} className="text-white-50" />
+                                                }
                                             </div>
-                                            <div className="d-flex flex-column gap-2">
-                                                {regionLocations.map((loc) => (
-                                                    <Button
-                                                        key={loc.name}
-                                                        variant="link"
-                                                        onClick={() => fetchWeather(loc.name)}
-                                                        className={`text-decoration-none text-start px-2 py-2 rounded-3 ${town === loc.name ? 'bg-primary bg-opacity-25 text-white' : 'text-white-50'
-                                                            }`}
-                                                    >
-                                                        <div className="d-flex flex-column">
-                                                            <div className="d-flex align-items-center gap-2">
-                                                                <span className="fw-medium">{loc.name}</span>
-                                                                {loc.type === 'resort' && <span style={{ fontSize: '0.65rem' }}>🎿</span>}
+                                            {expandedRegions[region] && (
+                                                <div className="d-flex flex-column gap-2">
+                                                    {regionLocations.map((loc) => (
+                                                        <Button
+                                                            key={loc.name}
+                                                            variant="link"
+                                                            onClick={() => fetchWeather(loc.name)}
+                                                            className={`text-decoration-none text-start px-2 py-2 rounded-3 ${town === loc.name ? 'bg-primary bg-opacity-25 text-white' : 'text-white-50'
+                                                                }`}
+                                                        >
+                                                            <div className="d-flex flex-column">
+                                                                <div className="d-flex align-items-center gap-2">
+                                                                    <span className="fw-medium">{loc.name}</span>
+                                                                    {loc.type === 'resort' && <span style={{ fontSize: '0.65rem' }}>🎿</span>}
+                                                                </div>
+                                                                {(loc.resortInfo || loc.elevation) && (
+                                                                    <small className="text-white-50" style={{ fontSize: '0.7rem' }}>
+                                                                        {loc.resortInfo
+                                                                            ? `${loc.resortInfo.verticalDrop}m vertical`
+                                                                            : `${loc.elevation.base}-${loc.elevation.summit}m`
+                                                                        }
+                                                                    </small>
+                                                                )}
                                                             </div>
-                                                            {(loc.resortInfo || loc.elevation) && (
-                                                                <small className="text-white-50" style={{ fontSize: '0.7rem' }}>
-                                                                    {loc.resortInfo
-                                                                        ? `${loc.resortInfo.verticalDrop}m vertical`
-                                                                        : `${loc.elevation.base}-${loc.elevation.summit}m`
-                                                                    }
-                                                                </small>
-                                                            )}
-                                                        </div>
-                                                    </Button>
-                                                ))}
-                                            </div>
+                                                        </Button>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}
