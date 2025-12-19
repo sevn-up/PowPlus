@@ -11,20 +11,23 @@ body {
   min-height: 100vh;
 }
 
-/* Glassmorphism Utilities */
+/* Glass Card Effect - Darker for readability, transparent for background */
 .glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
+  background: rgba(30, 41, 59, 0.75) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   border-radius: 1.5rem;
   /* Rounded-4 equivalent or more */
 }
 
+/* Sidebar specific styling */
 .glass-sidebar {
-  background: rgba(15, 23, 42, 0.8);
-  backdrop-filter: blur(16px);
-  border-right: 1px solid var(--glass-border);
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.8) 100%) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-right: 1px solid rgba(255, 255, 255, 0.18) !important;
 }
 
 /* Scrollbar hiding */
