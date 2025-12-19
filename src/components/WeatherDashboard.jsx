@@ -149,6 +149,8 @@ const WeatherDashboard = () => {
     }, []);
 
     // Auto-scroll to current hour when weather data loads (horizontal scroll only)
+    // DISABLED: Causes entire screen to shift - user doesn't want this behavior
+    /*
     useEffect(() => {
         if (weather && hourlyForecastRef.current) {
             // Small delay to ensure DOM is fully rendered
@@ -164,6 +166,7 @@ const WeatherDashboard = () => {
             }, 300);
         }
     }, [weather]);
+    */
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -185,25 +188,25 @@ const WeatherDashboard = () => {
 
             <div className="d-flex h-100 w-100 overflow-hidden">
                 {/* Desktop Sidebar */}
-                <div className="d-none d-md-flex flex-column p-4 glass-sidebar" style={{ width: '320px', height: '100vh' }}>
-                    <div className="mb-4">
-                        <div className="d-flex align-items-center gap-2 mb-4 text-white">
-                            <img src="/logo.png" alt="PowPlus Logo" className="rounded-circle shadow-sm" style={{ width: '40px', height: '40px' }} />
-                            <span className="fw-bold fs-4 tracking-tight text-shadow-sm">POWPLUS</span>
-                        </div>
-
-                        <Form onSubmit={handleSearch} className="position-relative">
-                            <Form.Control
-                                type="text"
-                                placeholder="Search..."
-                                value={town}
-                                onChange={(e) => setTown(e.target.value)}
-                                className="bg-transparent text-white border-secondary rounded-pill ps-5 shadow-sm"
-                                style={{ backdropFilter: 'blur(5px)' }}
-                            />
-                            <Search className="position-absolute top-50 start-0 translate-middle-y ms-3 text-white-50" size={16} />
-                        </Form>
-                    </div>
+                <div
+                    className="d-none d-md-flex flex-column p-4 glass-sidebar"
+                    style={{
+                        width: '320px',
+                        height: '100vh'
+                    }}
+                >
+                    {/* Search Bar */}
+                    <Form onSubmit={handleSearch} className="position-relative mb-4">
+                        <Form.Control
+                            type="text"
+                            placeholder="Search..."
+                            value={town}
+                            onChange={(e) => setTown(e.target.value)}
+                            className="ps-5 py-2 bg-secondary bg-opacity-10 border-0 rounded-4 text-white"
+                            style={{ border: '1px solid rgba(255, 255, 255, 0.1)' }}
+                        />
+                        <Search className="position-absolute top-50 start-0 translate-middle-y ms-3 text-white-50" size={16} />
+                    </Form>
 
                     <div className="flex-grow-1 overflow-auto custom-scrollbar">
                         {getRegions().map((region) => {
@@ -221,9 +224,24 @@ const WeatherDashboard = () => {
                             return (
                                 <div key={region} className="mb-3">
                                     <div
-                                        className="d-flex align-items-center justify-content-between mb-2 px-2 py-1 rounded-3 hover-bg-white-10 cursor-pointer transition-all"
+                                        className="d-flex align-items-center justify-content-between mb-2 px-3 py-2 rounded-4 transition-all"
                                         onClick={() => toggleRegion(region)}
-                                        style={{ cursor: 'pointer' }}
+                                        style={{
+                                            cursor: 'pointer',
+                                            background: expandedRegions[region] ? 'rgba(13, 110, 253, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                                            border: '1px solid rgba(255, 255, 255, 0.05)',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (!expandedRegions[region]) {
+                                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (!expandedRegions[region]) {
+                                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                                            }
+                                        }}
                                     >
                                         <div className="d-flex align-items-center gap-2">
                                             <small className="text-uppercase text-white-50 fw-bold d-flex align-items-center gap-2">
@@ -298,13 +316,18 @@ const WeatherDashboard = () => {
                                 <Offcanvas.Title id="offcanvasNavbarLabel">Menu</Offcanvas.Title>
                             </Offcanvas.Header>
                             <Offcanvas.Body style={{ overflowY: 'auto' }} className="custom-scrollbar">
+                                {/* Search Bar */}
                                 <Form onSubmit={handleSearch} className="mb-4 position-relative">
                                     <Form.Control
                                         type="text"
                                         placeholder="Search locations..."
                                         value={town}
                                         onChange={(e) => setTown(e.target.value)}
-                                        className="bg-secondary bg-opacity-25 text-white border-0 rounded-pill ps-5"
+                                        className="bg-secondary bg-opacity-10 text-white border-0 rounded-4 ps-5 py-2"
+                                        style={{
+                                            backdropFilter: 'blur(10px)',
+                                            border: '1px solid rgba(255, 255, 255, 0.1)'
+                                        }}
                                     />
                                     <Search className="position-absolute top-50 start-0 translate-middle-y ms-3 text-white-50" size={16} />
                                 </Form>
@@ -1315,7 +1338,7 @@ const WeatherDashboard = () => {
                         elevation={weather.elevation || 2000}
                     />
                 )}
-            </div>
+            </div >
         </>
     );
 };
