@@ -722,24 +722,21 @@ const WeatherDashboard = () => {
                                     onClick={() => setShowAvalancheModal(true)}
                                     style={{ cursor: 'pointer' }}
                                 >
-                                    <div
-                                        className="position-absolute top-0 start-0 w-100"
-                                        style={{ height: '4px', background: '#ffc107', borderRadius: '1.5rem 1.5rem 0 0' }}
-                                    />
+                                    {/* Removed top bar as requested */}
                                     <Card.Body>
                                         <div className="d-flex align-items-center justify-content-between mb-3">
                                             <div className="d-flex align-items-center gap-2 text-warning text-uppercase fw-bold">
                                                 <AlertTriangle size={18} />
                                                 <span style={{ letterSpacing: '0.5px' }}>Avalanche Forecast</span>
                                             </div>
-                                            <ExternalLink size={14} className="text-muted" />
+                                            <ExternalLink size={14} className="text-white-50" />
                                         </div>
 
                                         <div className="mb-3">
                                             <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
                                                 <div className="d-flex flex-column">
-                                                    <small className="text-muted" style={{ fontSize: '0.75rem' }}>Forecast Area</small>
-                                                    <div className="d-flex align-items-center gap-2">
+                                                    <small className="text-white-50 text-uppercase fw-bold" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>Forecast Area</small>
+                                                    <div className="d-flex align-items-center gap-2 mt-1">
                                                         <Badge bg="info" className="text-dark fw-bold">
                                                             {avalancheForecast.report?.title || 'Unavailable'}
                                                         </Badge>
@@ -747,8 +744,8 @@ const WeatherDashboard = () => {
                                                 </div>
                                                 {avalancheForecast.report?.validUntil && (
                                                     <div className="d-flex flex-column align-items-end">
-                                                        <small className="text-muted" style={{ fontSize: '0.75rem' }}>Valid Until</small>
-                                                        <small className="text-info fw-bold" style={{ fontSize: '0.8rem' }}>
+                                                        <small className="text-white-50 text-uppercase fw-bold" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>Valid Until</small>
+                                                        <small className="text-white fw-bold mt-1" style={{ fontSize: '0.85rem' }}>
                                                             {new Date(avalancheForecast.report.validUntil).toLocaleDateString('en-US', {
                                                                 weekday: 'short',
                                                                 month: 'short',
@@ -761,7 +758,7 @@ const WeatherDashboard = () => {
                                         </div>
 
                                         {avalancheForecast.report.dangerRatings && avalancheForecast.report.dangerRatings[0] && (
-                                            <div className="mb-3">
+                                            <div className="mb-4">
                                                 <Row className="g-2">
                                                     {[
                                                         { key: 'alp', label: 'Alpine', icon: '🏔️', elevation: '2500m+' },
@@ -774,25 +771,20 @@ const WeatherDashboard = () => {
                                                         return (
                                                             <Col xs={4} key={key}>
                                                                 <div
-                                                                    className="p-2 rounded text-center"
+                                                                    className="p-2 rounded text-center h-100 d-flex flex-column justify-content-center"
                                                                     style={{
                                                                         backgroundColor: ratingInfo.color,
                                                                         color: ratingInfo.textColor,
-                                                                        border: '1px solid rgba(0,0,0,0.1)'
+                                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                                                                     }}
                                                                 >
                                                                     <div className="d-flex align-items-center justify-content-center gap-1 mb-1">
                                                                         <span style={{ fontSize: '0.9rem' }}>{icon}</span>
-                                                                        <small className="d-block" style={{ fontSize: '0.7rem', fontWeight: '600' }}>
+                                                                        <small className="d-block text-uppercase" style={{ fontSize: '0.65rem', fontWeight: '700' }}>
                                                                             {label}
                                                                         </small>
                                                                     </div>
-                                                                    <strong style={{ fontSize: '0.9rem' }}>{ratingInfo.display}</strong>
-                                                                    <div>
-                                                                        <small style={{ fontSize: '0.65rem', opacity: 0.8 }}>
-                                                                            {elevation}
-                                                                        </small>
-                                                                    </div>
+                                                                    <strong style={{ fontSize: '0.9rem', lineHeight: '1.2' }}>{ratingInfo.display}</strong>
                                                                 </div>
                                                             </Col>
                                                         );
@@ -802,25 +794,25 @@ const WeatherDashboard = () => {
                                         )}
 
                                         {avalancheForecast.report.highlights && (
-                                            <div className="bg-white bg-opacity-10 rounded p-3 mb-3 border border-secondary">
+                                            <div className="bg-white bg-opacity-10 rounded p-3 mb-3 border border-white border-opacity-10">
                                                 <div className="d-flex align-items-start gap-2">
-                                                    <AlertTriangle size={14} className="text-warning mt-1 flex-shrink-0" />
+                                                    <AlertTriangle size={16} className="text-warning mt-1 flex-shrink-0" />
                                                     <div>
-                                                        <strong className="text-warning d-block mb-1" style={{ fontSize: '0.75rem' }}>
+                                                        <strong className="text-warning d-block mb-1 text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>
                                                             KEY MESSAGE
                                                         </strong>
-                                                        <small className="text-white-50">
+                                                        <p className="text-white mb-0 small" style={{ lineHeight: '1.5' }}>
                                                             {formatHighlights(avalancheForecast.report.highlights).substring(0, 150)}...
-                                                        </small>
+                                                        </p>
                                                     </div>
                                                 </div>
                                             </div>
                                         )}
 
                                         <div className="text-center">
-                                            <small className="text-info cursor-pointer d-inline-flex align-items-center gap-1">
+                                            <span className="text-info fw-bold cursor-pointer d-inline-flex align-items-center gap-1 small hover-underline">
                                                 Tap for full details <ExternalLink size={12} />
-                                            </small>
+                                            </span>
                                         </div>
                                     </Card.Body>
                                 </Card>
