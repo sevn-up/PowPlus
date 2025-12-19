@@ -2,6 +2,8 @@ import React from 'react';
 import { Modal, Button, Badge, Row, Col, Card } from 'react-bootstrap';
 import { AlertTriangle, Calendar, ExternalLink, Mountain, Wind, Compass, MapPin } from 'lucide-react';
 import { parseDangerRating, formatHighlights } from '../services/avalancheApi';
+import AvalancheProblemRose from './AvalancheProblemRose';
+import AvalancheProblemElevation from './AvalancheProblemElevation';
 
 const AvalancheDetailModal = ({ show, onHide, forecast, location }) => {
     if (!forecast || !forecast.report) return null;
@@ -63,11 +65,30 @@ const AvalancheDetailModal = ({ show, onHide, forecast, location }) => {
                                 <Calendar size={14} className="me-1" />
                                 Valid until {formatDate(report.validUntil)}
                             </Badge>
-                            {report.confidence && (
-                                <Badge bg="secondary" className="border border-secondary">
-                                    Confidence: {report.confidence.rating.display}
-                                </Badge>
-                            )}
+                            {report.confidence && (() => {
+                                const confidence = report.confidence.rating.display.toLowerCase();
+                                let badgeColor = 'secondary';
+                                let bgColor = '#6c757d';
+
+                                // Color mapping for confidence levels
+                                if (confidence.includes('high')) {
+                                    badgeColor = 'success';
+                                    bgColor = '#28a745';
+                                } else if (confidence.includes('moderate') || confidence.includes('medium')) {
+                                    badgeColor = 'warning';
+                                    bgColor = '#ffc107';
+                                } else if (confidence.includes('low')) {
+                                    badgeColor = 'danger';
+                                    bgColor = '#dc3545';
+                                }
+
+                                return (
+                                    <Badge bg={badgeColor} className="border border-secondary"
+                                        style={{ backgroundColor: bgColor, borderColor: 'rgba(255,255,255,0.2) !important' }}>
+                                        Confidence: {report.confidence.rating.display}
+                                    </Badge>
+                                );
+                            })()}
                         </div>
                     </div>
 
@@ -194,37 +215,94 @@ const AvalancheDetailModal = ({ show, onHide, forecast, location }) => {
                                                 <div className="ps-3">
                                                     <div className="d-flex justify-content-between align-items-start mb-2">
                                                         <h6 className="mb-0 fw-bold" style={{ color: problemColor }}>{problem.type.display}</h6>
-                                                        {problem.data?.likelihood && (
-                                                            <Badge bg="secondary" className="text-uppercase" style={{ fontSize: '0.65rem' }}>{problem.data.likelihood.display}</Badge>
-                                                        )}
                                                     </div>
 
                                                     {problem.comment && (
                                                         <p className="small text-white-50 mb-3">{formatHighlights(problem.comment)}</p>
                                                     )}
 
-                                                    <div className="d-flex flex-wrap gap-2 mb-2">
-                                                        {problem.data?.elevations && problem.data.elevations.map((elev, i) => (
-                                                            <Badge key={`elev-${i}`} bg="dark" className="border border-secondary text-secondary">
-                                                                {elev.display}
-                                                            </Badge>
-                                                        ))}
-                                                        {problem.data?.aspects && problem.data.aspects.map((aspect, i) => (
-                                                            <Badge key={`asp-${i}`} bg="dark" className="border border-secondary text-secondary">
-                                                                <Compass size={10} className="me-1" />
-                                                                {aspect.display}
-                                                            </Badge>
-                                                        ))}
-                                                    </div>
 
-                                                    {problem.data?.expectedSize && (
-                                                        <div className="small border-top border-secondary pt-2 mt-2">
-                                                            <span className="text-white-50 me-2">Expected Size:</span>
-                                                            <span className="text-warning fw-bold">
-                                                                {problem.data.expectedSize.min} - {problem.data.expectedSize.max}
-                                                            </span>
+
+
+                                                    <div className="d-flex flex-wrap justify-content-center align-items-center gap-3 mb-3 py-3 px-2 rounded-3"
+                                                        style={{
+                                                            background: 'rgba(0,0,0,0.2)',
+                                                            border: '1px solid rgba(255,255,255,0.1)'
+                                                        }}>
+                                                        {/* Visuals Group - stays together on mobile */}
+                                                        <div className="d-flex flex-wrap justify-content-center align-items-center gap-3">
+                                                            {/* Visual Aspect Rose */}
+                                                            <AvalancheProblemRose
+                                                                aspects={problem.data?.aspects || []}
+                                                                color={problemColor}
+                                                            />
+
+                                                            {/* Visual Elevation Profile */}
+                                                            <AvalancheProblemElevation
+                                                                elevations={problem.data?.elevations || []}
+                                                                color={problemColor}
+                                                            />
                                                         </div>
-                                                    )}
+
+                                                        {/* Stats Group - stays together on mobile */}
+                                                        <div className="d-flex flex-wrap justify-content-center align-items-center gap-3">
+                                                            {/* Expected Size */}
+                                                            {problem.data?.expectedSize && (
+                                                                <div className="d-flex flex-column align-items-center justify-content-center px-2"
+                                                                    style={{ minWidth: '90px', flex: '1 1 auto' }}>
+                                                                    <small className="text-white-50 text-uppercase fw-bold mb-1"
+                                                                        style={{ fontSize: '8px', letterSpacing: '1px' }}>
+                                                                        Expected Size
+                                                                    </small>
+                                                                    <span className="text-white fw-bold text-center"
+                                                                        style={{ fontSize: '0.9rem' }}>
+                                                                        Class {problem.data.expectedSize.min} - {problem.data.expectedSize.max}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Likelihood with color coding */}
+                                                            {problem.data?.likelihood && (() => {
+                                                                const likelihood = problem.data.likelihood.display.toLowerCase();
+                                                                let badgeColor = 'secondary';
+                                                                let bgColor = '#6c757d';
+
+                                                                // Color mapping for likelihood levels
+                                                                if (likelihood.includes('unlikely') || likelihood.includes('remote')) {
+                                                                    badgeColor = 'success';
+                                                                    bgColor = '#28a745';
+                                                                } else if (likelihood.includes('possible')) {
+                                                                    badgeColor = 'warning';
+                                                                    bgColor = '#ffc107';
+                                                                } else if (likelihood.includes('likely') && !likelihood.includes('unlikely')) {
+                                                                    badgeColor = 'danger';
+                                                                    bgColor = '#fd7e14';
+                                                                } else if (likelihood.includes('very') || likelihood.includes('certain')) {
+                                                                    badgeColor = 'danger';
+                                                                    bgColor = '#dc3545';
+                                                                }
+
+                                                                return (
+                                                                    <div className="d-flex flex-column align-items-center justify-content-center px-2"
+                                                                        style={{ minWidth: '90px', flex: '1 1 auto' }}>
+                                                                        <small className="text-white-50 text-uppercase fw-bold mb-1"
+                                                                            style={{ fontSize: '8px', letterSpacing: '1px' }}>
+                                                                            Likelihood
+                                                                        </small>
+                                                                        <Badge bg={badgeColor} className="text-uppercase fw-bold px-3 py-1"
+                                                                            style={{
+                                                                                fontSize: '0.75rem',
+                                                                                letterSpacing: '0.5px',
+                                                                                backgroundColor: bgColor,
+                                                                                border: 'none'
+                                                                            }}>
+                                                                            {problem.data.likelihood.display}
+                                                                        </Badge>
+                                                                    </div>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </Card.Body>
                                         </Card>
