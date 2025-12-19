@@ -111,6 +111,93 @@ export const locations = [
         }
     },
 
+    // === Alberta Ski Resorts ===
+    {
+        name: 'Lake Louise',
+        displayName: 'Lake Louise Ski Resort',
+        type: locationTypes.RESORT,
+        region: 'Alberta Rockies',
+        coordinates: { lat: 51.4254, lon: -116.1773 },
+        elevation: { base: 1646, summit: 2637 },
+        avalancheZone: 'Banff, Yoho, Kootenay National Parks',
+        resortInfo: {
+            verticalDrop: 991,
+            skiableAcres: 4200,
+            lifts: 10,
+            trails: 145,
+            website: 'https://www.skilouise.com',
+            description: 'Stunning views of Lake Louise and Victoria Glacier'
+        }
+    },
+    {
+        name: 'Sunshine Village',
+        displayName: 'Sunshine Village',
+        type: locationTypes.RESORT,
+        region: 'Alberta Rockies',
+        coordinates: { lat: 51.1142, lon: -115.7609 },
+        elevation: { base: 1658, summit: 2730 },
+        avalancheZone: 'Banff, Yoho, Kootenay National Parks',
+        resortInfo: {
+            verticalDrop: 1070,
+            skiableAcres: 3358,
+            lifts: 12,
+            trails: 137,
+            website: 'https://www.skibanff.com',
+            description: 'Highest resort elevation in Canada, champagne powder'
+        }
+    },
+    {
+        name: 'Marmot Basin',
+        displayName: 'Marmot Basin',
+        type: locationTypes.RESORT,
+        region: 'Alberta Rockies',
+        coordinates: { lat: 52.8144, lon: -118.0631 },
+        elevation: { base: 1698, summit: 2612 },
+        avalancheZone: 'Jasper National Park',
+        resortInfo: {
+            verticalDrop: 914,
+            skiableAcres: 1720,
+            lifts: 7,
+            trails: 91,
+            website: 'https://www.skimarmot.com',
+            description: 'Jasper\'s only ski resort with stunning mountain views'
+        }
+    },
+    {
+        name: 'Nakiska',
+        displayName: 'Nakiska Ski Area',
+        type: locationTypes.RESORT,
+        region: 'Alberta Rockies',
+        coordinates: { lat: 50.9034, lon: -115.0700 },
+        elevation: { base: 1478, summit: 2213 },
+        avalancheZone: 'Kananaskis',
+        resortInfo: {
+            verticalDrop: 735,
+            skiableAcres: 1021,
+            lifts: 6,
+            trails: 79,
+            website: 'https://www.skinakiska.com',
+            description: '1988 Winter Olympics venue in Kananaskis Country'
+        }
+    },
+    {
+        name: 'Castle Mountain',
+        displayName: 'Castle Mountain Resort',
+        type: locationTypes.RESORT,
+        region: 'Alberta Rockies',
+        coordinates: { lat: 49.3850, lon: -114.3690 },
+        elevation: { base: 1585, summit: 2130 },
+        avalancheZone: 'Waterton Lakes National Park',
+        resortInfo: {
+            verticalDrop: 545,
+            skiableAcres: 3200,
+            lifts: 6,
+            trails: 94,
+            website: 'https://www.skicastle.ca',
+            description: 'Southwest Alberta powder paradise'
+        }
+    },
+
     // Backcountry Zones
     {
         name: 'Rogers Pass',
@@ -598,6 +685,98 @@ export const locations = [
             permits: 'Varies by area',
             description: 'Extensive range with varied terrain'
         }
+    },
+
+    // === Alberta Backcountry Huts ===
+    {
+        name: 'Stanley Mitchell Hut',
+        displayName: 'Stanley Mitchell Hut (ACC)',
+        type: locationTypes.BACKCOUNTRY,
+        region: 'Alberta Rockies',
+        coordinates: { lat: 51.3829, lon: -116.4354 },
+        elevation: { base: 2060, summit: 2800 },
+        avalancheZone: 'Banff, Yoho, Kootenay National Parks',
+        backcountryInfo: {
+            difficulty: 'Advanced',
+            access: 'Yoho Valley Road, ski or hike in 12km',
+            permits: 'ACC hut booking required',
+            description: 'Premier ACC hut in Little Yoho Valley'
+        }
+    },
+    {
+        name: 'Bow Hut',
+        displayName: 'Bow Hut (ACC)',
+        type: locationTypes.BACKCOUNTRY,
+        region: 'Alberta Rockies',
+        coordinates: { lat: 51.6955, lon: -116.5000 },
+        elevation: { base: 1940, summit: 3050 },
+        avalancheZone: 'Banff, Yoho, Kootenay National Parks',
+        backcountryInfo: {
+            difficulty: 'Advanced',
+            access: 'Bow Lake, ski 7km on Wapta Icefield',
+            permits: 'ACC hut booking required',
+            description: 'Classic Wapta Icefield ski traverse hut'
+        }
+    },
+    {
+        name: 'Abbot Pass Hut',
+        displayName: 'Abbot Pass Hut (ACC)',
+        type: locationTypes.BACKCOUNTRY,
+        region: 'Alberta Rockies',
+        coordinates: { lat: 51.3398, lon: -116.2299 },
+        elevation: { base: 2925, summit: 3450 },
+        avalancheZone: 'Banff, Yoho, Kootenay National Parks',
+        backcountryInfo: {
+            difficulty: 'Mountaineering',
+            access: 'Lake Louise or Moraine Lake, technical alpine route',
+            permits: 'ACC hut booking required',
+            description: 'Highest ACC hut in Canada between Mt Victoria and Lefroy'
+        }
+    },
+    {
+        name: 'Fryatt Hut',
+        displayName: 'Fryatt Hut (ACC)',
+        type: locationTypes.BACKCOUNTRY,
+        region: 'Alberta Rockies',
+        coordinates: { lat: 52.4500, lon: -117.8830 },
+        elevation: { base: 2100, summit: 2800 },
+        avalancheZone: 'Jasper National Park',
+        backcountryInfo: {
+            difficulty: 'Advanced',
+            access: 'Geraldine Lakes trailhead, 22km ski in',
+            permits: 'ACC hut booking required',
+            description: 'Remote Jasper backcountry ski touring base'
+        }
+    },
+    {
+        name: 'Wates-Gibson Hut',
+        displayName: 'Wates-Gibson Hut (ACC)',
+        type: locationTypes.BACKCOUNTRY,
+        region: 'Alberta Rockies',
+        coordinates: { lat: 52.6500, lon: -118.0500 },
+        elevation: { base: 2300, summit: 2900 },
+        avalancheZone: 'Jasper National Park',
+        backcountryInfo: {
+            difficulty: 'Advanced',
+            access: 'Portal Creek Road, 8km ski in',
+            permits: 'ACC hut booking required',
+            description: 'Jasper ski touring gems, Commander area'
+        }
+    },
+    {
+        name: 'Mount Assiniboine Lodge',
+        displayName: 'Mount Assiniboine Lodge',
+        type: locationTypes.BACKCOUNTRY,
+        region: 'Alberta Rockies',
+        coordinates: { lat: 50.8700, lon: -115.6500 },
+        elevation: { base: 2180, summit: 2800 },
+        avalancheZone: 'Kananaskis',
+        backcountryInfo: {
+            difficulty: 'Intermediate to Advanced',
+            access: 'Sunshine Village or Bryant Creek, 27km ski',
+            permits: 'Lodge booking or BC Parks permit',
+            description: 'Iconic lodge at the Matterhorn of the Rockies'
+        }
     }
 ];
 
@@ -678,6 +857,6 @@ export const getLocationsByRegion = (region) => {
 export const getRegions = () => {
     const regions = [...new Set(locations.map(loc => loc.region).filter(Boolean))];
     // Sort regions in a logical order
-    const order = ['Coast Mountains', 'Interior', 'Rockies', 'North BC'];
+    const order = ['Coast Mountains', 'Interior', 'Rockies', 'Alberta Rockies', 'North BC'];
     return regions.sort((a, b) => order.indexOf(a) - order.indexOf(b));
 };

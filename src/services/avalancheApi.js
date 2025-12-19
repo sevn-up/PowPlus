@@ -139,17 +139,20 @@ export const getClosestAvalancheForecast = async (lat, lon) => {
     const areas = await getAvalancheForecastAreas();
     if (!areas || !areas.features) return null;
 
-    // Create a map of area IDs to centroids
-    const areaCentroids = {};
+    // Create a map of area IDs to centroids and names
+    const areaInfo = {};
     areas.features.forEach(feature => {
         if (feature.properties && feature.properties.centroid) {
-            areaCentroids[feature.id] = feature.properties.centroid;
+            areaInfo[feature.id] = {
+                centroid: feature.properties.centroid,
+                name: feature.properties.name || feature.properties.id
+            };
         }
     });
 
     products.forEach(product => {
-        if (product.area && product.area.id && areaCentroids[product.area.id]) {
-            const [areaLon, areaLat] = areaCentroids[product.area.id];
+        if (product.area && product.area.id && areaInfo[product.area.id]) {
+            const [areaLon, areaLat] = areaInfo[product.area.id].centroid;
             const distance = Math.sqrt(
                 Math.pow(lat - areaLat, 2) + Math.pow(lon - areaLon, 2)
             );
@@ -157,6 +160,11 @@ export const getClosestAvalancheForecast = async (lat, lon) => {
             if (distance < minDistance) {
                 minDistance = distance;
                 closestForecast = product;
+                // Add the human-readable area name to the forecast
+                closestForecast.area = {
+                    ...closestForecast.area,
+                    name: areaInfo[product.area.id].name
+                };
             }
         }
     });

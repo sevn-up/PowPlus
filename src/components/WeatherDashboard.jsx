@@ -138,9 +138,8 @@ const WeatherDashboard = () => {
         fetchWeather('Whistler');
     }, []);
 
-    // Auto-scroll to current hour when weather data loads
-    // DISABLED: User doesn't want auto-scroll behavior  
-    /* useEffect(() => {
+    // Auto-scroll to current hour when weather data loads (horizontal scroll only)
+    useEffect(() => {
         if (weather && hourlyForecastRef.current) {
             // Small delay to ensure DOM is fully rendered
             setTimeout(() => {
@@ -154,7 +153,7 @@ const WeatherDashboard = () => {
                 }
             }, 300);
         }
-    }, [weather]); */
+    }, [weather]);
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -238,7 +237,9 @@ const WeatherDashboard = () => {
                                                         <small className="text-white-50" style={{ fontSize: '0.7rem' }}>
                                                             {loc.resortInfo
                                                                 ? `${loc.resortInfo.verticalDrop}m vertical`
-                                                                : loc.backcountryInfo.difficulty
+                                                                : loc.elevation
+                                                                    ? `${loc.elevation.base}-${loc.elevation.summit}m`
+                                                                    : 'Elevation data unavailable'
                                                             }
                                                         </small>
                                                     )}
@@ -316,9 +317,19 @@ const WeatherDashboard = () => {
                                                         className={`text-decoration-none text-start px-2 py-2 rounded-3 ${town === loc.name ? 'bg-primary bg-opacity-25 text-white' : 'text-white-50'
                                                             }`}
                                                     >
-                                                        <div className="d-flex align-items-center gap-2">
-                                                            <span className="fw-medium">{loc.name}</span>
-                                                            {loc.type === 'resort' && <span style={{ fontSize: '0.65rem' }}>🎿</span>}
+                                                        <div className="d-flex flex-column">
+                                                            <div className="d-flex align-items-center gap-2">
+                                                                <span className="fw-medium">{loc.name}</span>
+                                                                {loc.type === 'resort' && <span style={{ fontSize: '0.65rem' }}>🎿</span>}
+                                                            </div>
+                                                            {(loc.resortInfo || loc.elevation) && (
+                                                                <small className="text-white-50" style={{ fontSize: '0.7rem' }}>
+                                                                    {loc.resortInfo
+                                                                        ? `${loc.resortInfo.verticalDrop}m vertical`
+                                                                        : `${loc.elevation.base}-${loc.elevation.summit}m`
+                                                                    }
+                                                                </small>
+                                                            )}
                                                         </div>
                                                     </Button>
                                                 ))}
