@@ -9,6 +9,7 @@ import AvalancheDetailModal from './AvalancheDetailModal';
 import AnimatedBackground from './AnimatedBackground';
 import MapCard from './MapCard';
 import HourlyDetailModal from './HourlyDetailModal';
+import HourlyForecastChart from './HourlyForecastChart';
 import { getWeatherIcon, getWindColor } from '../utils/weatherIcons.jsx';
 import { getSnowQuality, getVisibilityRating, formatWindDirection, getTemperatureColor, getSkiingConditionRating } from '../utils/skiConditions';
 import './WeatherDashboard.css';
@@ -845,6 +846,23 @@ const WeatherDashboard = () => {
                                             );
                                         })}
                                     </div>
+                                </Card.Body>
+                            </Card>
+
+                            {/* Hourly Temperature Chart */}
+                            <Card className="glass-card border-0 mb-4 text-white">
+                                <Card.Body>
+                                    <div className="d-flex align-items-center justify-content-between mb-3">
+                                        <div className="d-flex align-items-center gap-2 text-warning text-uppercase fw-bold">
+                                            <TrendingUp size={18} />
+                                            <span style={{ letterSpacing: '0.5px' }}>24-Hour Temperature Trend</span>
+                                        </div>
+                                    </div>
+
+                                    <HourlyForecastChart
+                                        hourlyData={weather.hourly}
+                                        elevation={currentLocation?.elevation}
+                                    />
                                 </Card.Body>
                             </Card>
 
