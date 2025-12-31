@@ -10,7 +10,7 @@ import {
     ReferenceLine
 } from 'recharts';
 
-const HourlyForecastChart = ({ hourlyData, elevation, timeRange = 24 }) => {
+const WindChart = ({ hourlyData, elevation, timeRange = 24 }) => {
     // Transform data for chart
     const chartData = hourlyData.time.slice(0, timeRange).map((time, idx) => {
         const hour = new Date(time);
@@ -33,19 +33,24 @@ const HourlyForecastChart = ({ hourlyData, elevation, timeRange = 24 }) => {
 
         return {
             time: timeLabel,
-            temp: Math.round(hourlyData.temperature_2m[idx]),
-            feels: hourlyData.apparent_temperature
-                ? Math.round(hourlyData.apparent_temperature[idx])
-                : Math.round(hourlyData.temperature_2m[idx])
+            speed: Math.round(hourlyData.wind_speed_10m[idx]),
+            gusts: Math.round(hourlyData.wind_gusts_10m[idx]),
+            direction: hourlyData.wind_direction_10m[idx]
         };
     });
+
+    // Helper: Convert degrees to compass direction
+    const getWindDirection = (degrees) => {
+        const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+        return directions[Math.round(degrees / 45) % 8];
+    };
 
     // Custom tooltip
     const CustomTooltip = ({ active, payload }) => {
         if (active && payload && payload.length) {
-            // Find the correct values by dataKey to prevent misalignment
-            const tempData = payload.find(p => p.dataKey === 'temp');
-            const feelsData = payload.find(p => p.dataKey === 'feels');
+            const speedData = payload.find(p => p.dataKey === 'speed');
+            const gustsData = payload.find(p => p.dataKey === 'gusts');
+            const data = payload[0].payload;
 
             return (
                 <div
@@ -57,18 +62,21 @@ const HourlyForecastChart = ({ hourlyData, elevation, timeRange = 24 }) => {
                     }}
                 >
                     <p style={{ margin: 0, fontSize: '0.75rem', color: '#9ca3af' }}>
-                        {payload[0].payload.time}
+                        {data.time}
                     </p>
-                    {tempData && (
-                        <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#3b82f6', fontWeight: 'bold' }}>
-                            Temp: {tempData.value}°C
+                    {speedData && (
+                        <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#60a5fa', fontWeight: 'bold' }}>
+                            Speed: {speedData.value} km/h
                         </p>
                     )}
-                    {feelsData && (
-                        <p style={{ margin: '2px 0 0 0', fontSize: '0.85rem', color: '#fbbf24' }}>
-                            Feels: {feelsData.value}°C
+                    {gustsData && (
+                        <p style={{ margin: '2px 0 0 0', fontSize: '0.85rem', color: '#f87171' }}>
+                            Gusts: {gustsData.value} km/h
                         </p>
                     )}
+                    <p style={{ margin: '2px 0 0 0', fontSize: '0.85rem', color: '#fbbf24' }}>
+                        Direction: {getWindDirection(data.direction)}
+                    </p>
                 </div>
             );
         }
@@ -103,7 +111,7 @@ const HourlyForecastChart = ({ hourlyData, elevation, timeRange = 24 }) => {
                             style={{ fontSize: '0.7rem' }}
                             tick={{ fill: '#9ca3af' }}
                             label={{
-                                value: 'Temperature (°C)',
+                                value: 'Wind Speed (km/h)',
                                 angle: -90,
                                 position: 'insideLeft',
                                 fill: '#9ca3af',
@@ -113,35 +121,35 @@ const HourlyForecastChart = ({ hourlyData, elevation, timeRange = 24 }) => {
 
                         <Tooltip content={<CustomTooltip />} />
 
-                        {/* Freezing line reference */}
+                        {/* High wind warning line */}
                         <ReferenceLine
-                            y={0}
-                            stroke="#6bcf7f"
+                            y={40}
+                            stroke="#ef4444"
                             strokeDasharray="5 5"
                             strokeWidth={1.5}
                             label={{
-                                value: 'Freezing',
-                                fill: '#6bcf7f',
+                                value: 'High Wind',
+                                fill: '#ef4444',
                                 fontSize: 10,
                                 position: 'right'
                             }}
                         />
 
-                        {/* Temperature line */}
+                        {/* Wind speed line */}
                         <Line
                             type="monotone"
-                            dataKey="temp"
-                            stroke="#3b82f6"
+                            dataKey="speed"
+                            stroke="#60a5fa"
                             strokeWidth={2.5}
-                            dot={{ fill: '#3b82f6', r: 4 }}
+                            dot={{ fill: '#60a5fa', r: 4 }}
                             activeDot={{ r: 6 }}
                         />
 
-                        {/* Feels-like line */}
+                        {/* Gusts line */}
                         <Line
                             type="monotone"
-                            dataKey="feels"
-                            stroke="#fbbf24"
+                            dataKey="gusts"
+                            stroke="#f87171"
                             strokeWidth={2}
                             strokeDasharray="5 5"
                             dot={false}
@@ -157,26 +165,26 @@ const HourlyForecastChart = ({ hourlyData, elevation, timeRange = 24 }) => {
                         style={{
                             width: '20px',
                             height: '3px',
-                            backgroundColor: '#3b82f6',
+                            backgroundColor: '#60a5fa',
                             borderRadius: '2px'
                         }}
                     ></div>
-                    <span className="text-white-50">Temperature</span>
+                    <span className="text-white-50">Wind Speed</span>
                 </div>
                 <div className="d-flex align-items-center gap-2">
                     <div
                         style={{
                             width: '20px',
                             height: '2px',
-                            background: 'repeating-linear-gradient(to right, #fbbf24 0, #fbbf24 5px, transparent 5px, transparent 10px)',
+                            background: 'repeating-linear-gradient(to right, #f87171 0, #f87171 5px, transparent 5px, transparent 10px)',
                             borderRadius: '2px'
                         }}
                     ></div>
-                    <span className="text-white-50">Feels Like</span>
+                    <span className="text-white-50">Gusts</span>
                 </div>
             </div>
         </div>
     );
 };
 
-export default HourlyForecastChart;
+export default WindChart;

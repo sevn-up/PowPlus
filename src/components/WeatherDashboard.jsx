@@ -10,6 +10,9 @@ import AnimatedBackground from './AnimatedBackground';
 import MapCard from './MapCard';
 import HourlyDetailModal from './HourlyDetailModal';
 import HourlyForecastChart from './HourlyForecastChart';
+import WindChart from './WindChart';
+import SnowTrackingChart from './SnowTrackingChart';
+import UVIndexChart from './UVIndexChart';
 import { getWeatherIcon, getWindColor } from '../utils/weatherIcons.jsx';
 import { getSnowQuality, getVisibilityRating, formatWindDirection, getTemperatureColor, getSkiingConditionRating } from '../utils/skiConditions';
 import './WeatherDashboard.css';
@@ -33,6 +36,8 @@ const WeatherDashboard = () => {
     const [selectedHourIndex, setSelectedHourIndex] = useState(null); // For hourly detail modal
     const [showHourlyModal, setShowHourlyModal] = useState(false);
     const [hourlyView, setHourlyView] = useState('cards'); // 'cards' or 'charts'
+    const [chartType, setChartType] = useState('temperature'); // 'temperature', 'wind', 'snow', 'uv'
+    const [timeRange, setTimeRange] = useState(24); // 12, 24, 48, 72 hours
 
     // Hold-down gesture state for mobile
     const [isHolding, setIsHolding] = useState(false);
@@ -500,9 +505,10 @@ const WeatherDashboard = () => {
                                                     style={{
                                                         fontSize: '0.7rem',
                                                         padding: '0.35rem 0.6rem',
-                                                        background: hourlyView === 'cards' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.05)',
-                                                        border: hourlyView === 'cards' ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid rgba(59, 130, 246, 0.2)',
-                                                        color: '#fff'
+                                                        background: hourlyView === 'cards' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.05)',
+                                                        border: hourlyView === 'cards' ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(59, 130, 246, 0.2)',
+                                                        color: '#fff',
+                                                        fontWeight: hourlyView === 'cards' ? 'bold' : 'normal'
                                                     }}
                                                     onClick={() => setHourlyView('cards')}
                                                 >
@@ -514,9 +520,10 @@ const WeatherDashboard = () => {
                                                     style={{
                                                         fontSize: '0.7rem',
                                                         padding: '0.35rem 0.6rem',
-                                                        background: hourlyView === 'charts' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.05)',
-                                                        border: hourlyView === 'charts' ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid rgba(59, 130, 246, 0.2)',
-                                                        color: '#fff'
+                                                        background: hourlyView === 'charts' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.05)',
+                                                        border: hourlyView === 'charts' ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(59, 130, 246, 0.2)',
+                                                        color: '#fff',
+                                                        fontWeight: hourlyView === 'charts' ? 'bold' : 'normal'
                                                     }}
                                                     onClick={() => setHourlyView('charts')}
                                                 >
@@ -888,6 +895,54 @@ const WeatherDashboard = () => {
                                         </>
                                     ) : (
                                         <div className="p-3">
+                                            {/* Time Range Selector */}
+                                            <div className="d-flex gap-2 mb-2 justify-content-center">
+                                                <div className="btn-group btn-group-sm">
+                                                    <button
+                                                        className="btn btn-sm"
+                                                        style={{
+                                                            fontSize: '0.65rem',
+                                                            padding: '0.25rem 0.5rem',
+                                                            background: timeRange === 24 ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.05)',
+                                                            border: timeRange === 24 ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(59, 130, 246, 0.2)',
+                                                            color: '#fff',
+                                                            fontWeight: timeRange === 24 ? 'bold' : 'normal'
+                                                        }}
+                                                        onClick={() => setTimeRange(24)}
+                                                    >
+                                                        24h
+                                                    </button>
+                                                    <button
+                                                        className="btn btn-sm"
+                                                        style={{
+                                                            fontSize: '0.65rem',
+                                                            padding: '0.25rem 0.5rem',
+                                                            background: timeRange === 48 ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.05)',
+                                                            border: timeRange === 48 ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(59, 130, 246, 0.2)',
+                                                            color: '#fff',
+                                                            fontWeight: timeRange === 48 ? 'bold' : 'normal'
+                                                        }}
+                                                        onClick={() => setTimeRange(48)}
+                                                    >
+                                                        48h
+                                                    </button>
+                                                    <button
+                                                        className="btn btn-sm"
+                                                        style={{
+                                                            fontSize: '0.65rem',
+                                                            padding: '0.25rem 0.5rem',
+                                                            background: timeRange === 72 ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.05)',
+                                                            border: timeRange === 72 ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(59, 130, 246, 0.2)',
+                                                            color: '#fff',
+                                                            fontWeight: timeRange === 72 ? 'bold' : 'normal'
+                                                        }}
+                                                        onClick={() => setTimeRange(72)}
+                                                    >
+                                                        72h
+                                                    </button>
+                                                </div>
+                                            </div>
+
                                             {/* Chart Type Selector */}
                                             <div className="d-flex gap-2 mb-3 justify-content-center flex-wrap">
                                                 <button
@@ -895,10 +950,12 @@ const WeatherDashboard = () => {
                                                     style={{
                                                         fontSize: '0.7rem',
                                                         padding: '0.35rem 0.6rem',
-                                                        background: 'rgba(59, 130, 246, 0.2)',
-                                                        border: '1px solid rgba(59, 130, 246, 0.4)',
-                                                        color: '#fff'
+                                                        background: chartType === 'temperature' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.05)',
+                                                        border: chartType === 'temperature' ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(59, 130, 246, 0.2)',
+                                                        color: '#fff',
+                                                        fontWeight: chartType === 'temperature' ? 'bold' : 'normal'
                                                     }}
+                                                    onClick={() => setChartType('temperature')}
                                                 >
                                                     <Thermometer size={12} />
                                                     Temperature
@@ -908,40 +965,77 @@ const WeatherDashboard = () => {
                                                     style={{
                                                         fontSize: '0.7rem',
                                                         padding: '0.35rem 0.6rem',
-                                                        background: 'rgba(59, 130, 246, 0.05)',
-                                                        border: '1px solid rgba(59, 130, 246, 0.2)',
-                                                        color: '#999',
-                                                        cursor: 'not-allowed'
+                                                        background: chartType === 'wind' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.05)',
+                                                        border: chartType === 'wind' ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(59, 130, 246, 0.2)',
+                                                        color: '#fff',
+                                                        fontWeight: chartType === 'wind' ? 'bold' : 'normal'
                                                     }}
-                                                    disabled
+                                                    onClick={() => setChartType('wind')}
                                                 >
                                                     <Wind size={12} />
                                                     Wind
-                                                    <span className="badge bg-secondary ms-1" style={{ fontSize: '0.5rem' }}>Soon</span>
                                                 </button>
                                                 <button
                                                     className="btn btn-sm d-flex align-items-center gap-1"
                                                     style={{
                                                         fontSize: '0.7rem',
                                                         padding: '0.35rem 0.6rem',
-                                                        background: 'rgba(59, 130, 246, 0.05)',
-                                                        border: '1px solid rgba(59, 130, 246, 0.2)',
-                                                        color: '#999',
-                                                        cursor: 'not-allowed'
+                                                        background: chartType === 'snow' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.05)',
+                                                        border: chartType === 'snow' ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(59, 130, 246, 0.2)',
+                                                        color: '#fff',
+                                                        fontWeight: chartType === 'snow' ? 'bold' : 'normal'
                                                     }}
-                                                    disabled
+                                                    onClick={() => setChartType('snow')}
                                                 >
                                                     <Snowflake size={12} />
                                                     Snow Tracking
-                                                    <span className="badge bg-secondary ms-1" style={{ fontSize: '0.5rem' }}>Soon</span>
+                                                </button>
+                                                <button
+                                                    className="btn btn-sm d-flex align-items-center gap-1"
+                                                    style={{
+                                                        fontSize: '0.7rem',
+                                                        padding: '0.35rem 0.6rem',
+                                                        background: chartType === 'uv' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.05)',
+                                                        border: chartType === 'uv' ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(59, 130, 246, 0.2)',
+                                                        color: '#fff',
+                                                        fontWeight: chartType === 'uv' ? 'bold' : 'normal'
+                                                    }}
+                                                    onClick={() => setChartType('uv')}
+                                                >
+                                                    <Sun size={12} />
+                                                    UV Index
                                                 </button>
                                             </div>
 
-                                            {/* Charts View */}
-                                            <HourlyForecastChart
-                                                hourlyData={weather.hourly}
-                                                elevation={currentLocation?.elevation}
-                                            />
+                                            {/* Chart Display */}
+                                            {chartType === 'temperature' && (
+                                                <HourlyForecastChart
+                                                    hourlyData={weather.hourly}
+                                                    elevation={currentLocation?.elevation}
+                                                    timeRange={timeRange}
+                                                />
+                                            )}
+                                            {chartType === 'wind' && (
+                                                <WindChart
+                                                    hourlyData={weather.hourly}
+                                                    elevation={currentLocation?.elevation}
+                                                    timeRange={timeRange}
+                                                />
+                                            )}
+                                            {chartType === 'snow' && (
+                                                <SnowTrackingChart
+                                                    hourlyData={weather.hourly}
+                                                    elevation={currentLocation?.elevation}
+                                                    timeRange={timeRange}
+                                                />
+                                            )}
+                                            {chartType === 'uv' && (
+                                                <UVIndexChart
+                                                    hourlyData={weather.hourly}
+                                                    elevation={currentLocation?.elevation}
+                                                    timeRange={timeRange}
+                                                />
+                                            )}
                                         </div>
                                     )}
                                 </Card.Body>
