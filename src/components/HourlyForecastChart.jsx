@@ -64,77 +64,79 @@ const HourlyForecastChart = ({ hourlyData, elevation }) => {
     };
 
     return (
-        <div style={{ height: '320px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                    data={chartData}
-                    margin={{ top: 10, right: 15, left: -15, bottom: 5 }}
-                >
-                    <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="rgba(255, 255, 255, 0.1)"
-                    />
+        <div className="p-3">
+            <div style={{ height: '300px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                        data={chartData}
+                        margin={{ top: 10, right: 15, left: -15, bottom: 5 }}
+                    >
+                        <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="rgba(255, 255, 255, 0.1)"
+                        />
 
-                    <XAxis
-                        dataKey="time"
-                        stroke="#9ca3af"
-                        style={{ fontSize: '0.7rem' }}
-                        tick={{ fill: '#9ca3af' }}
-                    />
+                        <XAxis
+                            dataKey="time"
+                            stroke="#9ca3af"
+                            style={{ fontSize: '0.7rem' }}
+                            tick={{ fill: '#9ca3af' }}
+                        />
 
-                    <YAxis
-                        stroke="#9ca3af"
-                        style={{ fontSize: '0.7rem' }}
-                        tick={{ fill: '#9ca3af' }}
-                        label={{
-                            value: 'Temperature (°C)',
-                            angle: -90,
-                            position: 'insideLeft',
-                            fill: '#9ca3af',
-                            style: { fontSize: '0.7rem' }
-                        }}
-                    />
+                        <YAxis
+                            stroke="#9ca3af"
+                            style={{ fontSize: '0.7rem' }}
+                            tick={{ fill: '#9ca3af' }}
+                            label={{
+                                value: 'Temperature (°C)',
+                                angle: -90,
+                                position: 'insideLeft',
+                                fill: '#9ca3af',
+                                style: { fontSize: '0.7rem' }
+                            }}
+                        />
 
-                    <Tooltip content={<CustomTooltip />} />
+                        <Tooltip content={<CustomTooltip />} />
 
-                    {/* Freezing line reference */}
-                    <ReferenceLine
-                        y={0}
-                        stroke="#6bcf7f"
-                        strokeDasharray="5 5"
-                        strokeWidth={1.5}
-                        label={{
-                            value: 'Freezing',
-                            fill: '#6bcf7f',
-                            fontSize: 10,
-                            position: 'right'
-                        }}
-                    />
+                        {/* Freezing line reference */}
+                        <ReferenceLine
+                            y={0}
+                            stroke="#6bcf7f"
+                            strokeDasharray="5 5"
+                            strokeWidth={1.5}
+                            label={{
+                                value: 'Freezing',
+                                fill: '#6bcf7f',
+                                fontSize: 10,
+                                position: 'right'
+                            }}
+                        />
 
-                    {/* Temperature line */}
-                    <Line
-                        type="monotone"
-                        dataKey="temp"
-                        stroke="#3b82f6"
-                        strokeWidth={2.5}
-                        dot={{ fill: '#3b82f6', r: 4 }}
-                        activeDot={{ r: 6 }}
-                    />
+                        {/* Temperature line */}
+                        <Line
+                            type="monotone"
+                            dataKey="temp"
+                            stroke="#3b82f6"
+                            strokeWidth={2.5}
+                            dot={{ fill: '#3b82f6', r: 4 }}
+                            activeDot={{ r: 6 }}
+                        />
 
-                    {/* Feels-like line */}
-                    <Line
-                        type="monotone"
-                        dataKey="feels"
-                        stroke="#fbbf24"
-                        strokeWidth={2}
-                        strokeDasharray="5 5"
-                        dot={false}
-                    />
-                </LineChart>
-            </ResponsiveContainer>
+                        {/* Feels-like line */}
+                        <Line
+                            type="monotone"
+                            dataKey="feels"
+                            stroke="#fbbf24"
+                            strokeWidth={2}
+                            strokeDasharray="5 5"
+                            dot={false}
+                        />
+                    </LineChart>
+                </ResponsiveContainer>
+            </div>
 
             {/* Legend */}
-            <div className="d-flex gap-4 justify-content-center mt-2" style={{ fontSize: '0.7rem' }}>
+            <div className="d-flex gap-4 justify-content-center mt-3" style={{ fontSize: '0.7rem' }}>
                 <div className="d-flex align-items-center gap-2">
                     <div
                         style={{
