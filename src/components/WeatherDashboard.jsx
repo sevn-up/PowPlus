@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Form, Button, Navbar, Nav, Offcanvas, Badge, Alert } from 'react-bootstrap';
-import { Search, Snowflake, Wind, Thermometer, Mountain, MapPin, Calendar, Droplets, Sun, Menu, Eye, Ruler, AlertTriangle, TrendingUp, CloudSnow, Sunrise, Sunset, Cloud, CloudRain, CloudDrizzle, CloudFog, Zap, ArrowUp, Navigation, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { MapPin, Calendar, Thermometer, Wind, Droplets, Eye, Cloud, Snowflake, AlertTriangle, TrendingUp, ChevronLeft, ChevronRight, List, LineChart, Sunrise, Sun, Sunset, Moon, Search, Mountain, Menu, Ruler, Navigation, ChevronDown, ChevronUp, ExternalLink, CloudSnow, CloudRain, CloudDrizzle, CloudFog, Zap, ArrowUp } from 'lucide-react';
 import { getCoordinates, getWeather, getWeatherDescription } from '../services/weatherApi';
 import { getClosestAvalancheForecast, parseDangerRating, formatHighlights } from '../services/avalancheApi';
 import { calculatePowderScore, calculateSnowfallTotal, getBestSkiingWindow } from '../services/powderTracker';
@@ -472,7 +472,7 @@ const WeatherDashboard = () => {
                             {/* Powder Alert Banner */}
                             {powderScore && powderScore.isPowderDay && (
                                 <Alert variant="info" className="glass-card border-0 shadow-lg d-flex align-items-center gap-3 mb-4 hover-scale transition-all">
-                                    <CloudSnow size={32} className="text-info" />
+                                    <Snowflake size={32} className="text-info" />
                                     <div className="flex-grow-1">
                                         <h5 className="mb-1 fw-bold text-white">🎿 Powder Alert!</h5>
                                         <p className="mb-0 text-white-50">
@@ -487,26 +487,41 @@ const WeatherDashboard = () => {
                             <Card className="glass-card border-0 mb-4 text-white shadow-lg hover-scale transition-all">
                                 <Card.Body>
                                     <div className="d-flex align-items-center justify-content-between mb-2">
-                                        <div className="d-flex align-items-center gap-2 text-white-50 text-uppercase fw-bold small">
-                                            <Calendar size={16} /> Hourly Forecast
+                                        <div className="d-flex align-items-center gap-2 text-warning text-uppercase fw-bold">
+                                            <Calendar size={18} />
+                                            <span style={{ letterSpacing: '0.5px' }}>Hourly Forecast</span>
                                         </div>
 
                                         <div className="d-flex align-items-center gap-3">
                                             {/* Toggle Buttons */}
                                             <div className="btn-group btn-group-sm">
                                                 <button
-                                                    className={`btn btn-sm ${hourlyView === 'cards' ? 'btn-primary' : 'btn-outline-primary'}`}
-                                                    style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem' }}
+                                                    className="btn btn-sm d-flex align-items-center gap-1"
+                                                    style={{
+                                                        fontSize: '0.7rem',
+                                                        padding: '0.35rem 0.6rem',
+                                                        background: hourlyView === 'cards' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.05)',
+                                                        border: hourlyView === 'cards' ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid rgba(59, 130, 246, 0.2)',
+                                                        color: '#fff'
+                                                    }}
                                                     onClick={() => setHourlyView('cards')}
                                                 >
-                                                    📊 Cards
+                                                    <List size={12} />
+                                                    Cards
                                                 </button>
                                                 <button
-                                                    className={`btn btn-sm ${hourlyView === 'charts' ? 'btn-primary' : 'btn-outline-primary'}`}
-                                                    style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem' }}
+                                                    className="btn btn-sm d-flex align-items-center gap-1"
+                                                    style={{
+                                                        fontSize: '0.7rem',
+                                                        padding: '0.35rem 0.6rem',
+                                                        background: hourlyView === 'charts' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.05)',
+                                                        border: hourlyView === 'charts' ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid rgba(59, 130, 246, 0.2)',
+                                                        color: '#fff'
+                                                    }}
                                                     onClick={() => setHourlyView('charts')}
                                                 >
-                                                    📈 Charts
+                                                    <LineChart size={12} />
+                                                    Charts
                                                 </button>
                                             </div>
 
@@ -873,6 +888,55 @@ const WeatherDashboard = () => {
                                         </>
                                     ) : (
                                         <div className="p-3">
+                                            {/* Chart Type Selector */}
+                                            <div className="d-flex gap-2 mb-3 justify-content-center flex-wrap">
+                                                <button
+                                                    className="btn btn-sm d-flex align-items-center gap-1"
+                                                    style={{
+                                                        fontSize: '0.7rem',
+                                                        padding: '0.35rem 0.6rem',
+                                                        background: 'rgba(59, 130, 246, 0.2)',
+                                                        border: '1px solid rgba(59, 130, 246, 0.4)',
+                                                        color: '#fff'
+                                                    }}
+                                                >
+                                                    <Thermometer size={12} />
+                                                    Temperature
+                                                </button>
+                                                <button
+                                                    className="btn btn-sm d-flex align-items-center gap-1"
+                                                    style={{
+                                                        fontSize: '0.7rem',
+                                                        padding: '0.35rem 0.6rem',
+                                                        background: 'rgba(59, 130, 246, 0.05)',
+                                                        border: '1px solid rgba(59, 130, 246, 0.2)',
+                                                        color: '#999',
+                                                        cursor: 'not-allowed'
+                                                    }}
+                                                    disabled
+                                                >
+                                                    <Wind size={12} />
+                                                    Wind
+                                                    <span className="badge bg-secondary ms-1" style={{ fontSize: '0.5rem' }}>Soon</span>
+                                                </button>
+                                                <button
+                                                    className="btn btn-sm d-flex align-items-center gap-1"
+                                                    style={{
+                                                        fontSize: '0.7rem',
+                                                        padding: '0.35rem 0.6rem',
+                                                        background: 'rgba(59, 130, 246, 0.05)',
+                                                        border: '1px solid rgba(59, 130, 246, 0.2)',
+                                                        color: '#999',
+                                                        cursor: 'not-allowed'
+                                                    }}
+                                                    disabled
+                                                >
+                                                    <Snowflake size={12} />
+                                                    Snow Tracking
+                                                    <span className="badge bg-secondary ms-1" style={{ fontSize: '0.5rem' }}>Soon</span>
+                                                </button>
+                                            </div>
+
                                             {/* Charts View */}
                                             <HourlyForecastChart
                                                 hourlyData={weather.hourly}
@@ -891,7 +955,7 @@ const WeatherDashboard = () => {
                                     style={{ cursor: 'pointer' }}
                                 >
                                     {/* Removed top bar as requested */}
-                                    <Card.Body>
+                                    <Card.Body style={{ minHeight: '450px' }}>
                                         <div className="d-flex align-items-center justify-content-between mb-3">
                                             <div className="d-flex align-items-center gap-2 text-warning text-uppercase fw-bold">
                                                 <AlertTriangle size={18} />
