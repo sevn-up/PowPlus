@@ -11,7 +11,9 @@ import MapCard from './MapCard';
 import HourlyDetailModal from './HourlyDetailModal';
 import HourlyForecastChart from './HourlyForecastChart';
 import WindChart from './WindChart';
+import AvalancheTrendChart from './AvalancheTrendChart';
 import SnowTrackingChart from './SnowTrackingChart';
+import CardToggleButtons from './CardToggleButtons';
 import UVIndexChart from './UVIndexChart';
 import { getWeatherIcon, getWindColor } from '../utils/weatherIcons.jsx';
 import { getSnowQuality, getVisibilityRating, formatWindDirection, getTemperatureColor, getSkiingConditionRating, getFreezingLevelWarning } from '../utils/skiConditions';
@@ -60,6 +62,7 @@ const WeatherDashboard = () => {
     const [selectedHourIndex, setSelectedHourIndex] = useState(null); // For hourly detail modal
     const [showHourlyModal, setShowHourlyModal] = useState(false);
     const [hourlyView, setHourlyView] = useState('cards'); // 'cards' or 'charts'
+    const [avalancheView, setAvalancheView] = useState('cards'); // 'cards' or 'charts' for avalanche card
     const [chartType, setChartType] = useState('temperature'); // 'temperature', 'wind', 'snow', 'uv'
     const [timeRange, setTimeRange] = useState(24); // 12, 24, 48, 72 hours
 
@@ -528,38 +531,12 @@ const WeatherDashboard = () => {
 
                                         <div className="d-flex align-items-center gap-3">
                                             {/* Toggle Buttons */}
-                                            <div className="btn-group btn-group-sm">
-                                                <button
-                                                    className="btn btn-sm d-flex align-items-center gap-1"
-                                                    style={{
-                                                        fontSize: '0.7rem',
-                                                        padding: '0.35rem 0.6rem',
-                                                        background: hourlyView === 'cards' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.05)',
-                                                        border: hourlyView === 'cards' ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(59, 130, 246, 0.2)',
-                                                        color: '#fff',
-                                                        fontWeight: hourlyView === 'cards' ? 'bold' : 'normal'
-                                                    }}
-                                                    onClick={() => setHourlyView('cards')}
-                                                >
-                                                    <List size={12} />
-                                                    Cards
-                                                </button>
-                                                <button
-                                                    className="btn btn-sm d-flex align-items-center gap-1"
-                                                    style={{
-                                                        fontSize: '0.7rem',
-                                                        padding: '0.35rem 0.6rem',
-                                                        background: hourlyView === 'charts' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.05)',
-                                                        border: hourlyView === 'charts' ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(59, 130, 246, 0.2)',
-                                                        color: '#fff',
-                                                        fontWeight: hourlyView === 'charts' ? 'bold' : 'normal'
-                                                    }}
-                                                    onClick={() => setHourlyView('charts')}
-                                                >
-                                                    <LineChart size={12} />
-                                                    Charts
-                                                </button>
-                                            </div>
+                                            <CardToggleButtons
+                                                view={hourlyView}
+                                                setView={setHourlyView}
+                                                theme="primary"
+                                                emphasis="normal"
+                                            />
 
                                             <small className="text-white-50 fst-italic d-none d-md-block" style={{ fontSize: '0.65rem' }}>
                                                 Next 24 hours
@@ -1084,7 +1061,17 @@ const WeatherDashboard = () => {
                                                 <AlertTriangle size={18} />
                                                 <span style={{ letterSpacing: '0.5px' }}>Avalanche Forecast</span>
                                             </div>
-                                            <ExternalLink size={14} className="text-white-50" />
+                                            <div className="d-flex align-items-center gap-2">
+                                                {/* Cards/Charts Toggle */}
+                                                <CardToggleButtons
+                                                    view={avalancheView}
+                                                    setView={setAvalancheView}
+                                                    theme="warning"
+                                                    emphasis="high"
+                                                    stopPropagation={true}
+                                                />
+                                                <ExternalLink size={14} className="text-white-50" />
+                                            </div>
                                         </div>
 
                                         <div className="mb-3">
@@ -1112,57 +1099,72 @@ const WeatherDashboard = () => {
                                             </div>
                                         </div>
 
-                                        {avalancheForecast.report.dangerRatings && avalancheForecast.report.dangerRatings[0] && (
-                                            <div className="mb-4">
-                                                <Row className="g-2">
-                                                    {[
-                                                        { key: 'alp', label: 'Alpine', icon: '🏔️', elevation: '2500m+' },
-                                                        { key: 'tln', label: 'Treeline', icon: '⛰️', elevation: '1500-2500m' },
-                                                        { key: 'btl', label: 'Below Treeline', icon: '🌲', elevation: '<1500m' }
-                                                    ].map(({ key, label, icon, elevation }) => {
-                                                        const rating = avalancheForecast.report.dangerRatings[0].ratings[key];
-                                                        const ratingInfo = parseDangerRating(rating?.rating?.value);
 
-                                                        return (
-                                                            <Col xs={4} key={key}>
-                                                                <div
-                                                                    className="p-2 rounded text-center h-100 d-flex flex-column justify-content-center"
-                                                                    style={{
-                                                                        backgroundColor: ratingInfo.color,
-                                                                        color: ratingInfo.textColor,
-                                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                                                                    }}
-                                                                >
-                                                                    <div className="d-flex align-items-center justify-content-center gap-1 mb-1">
-                                                                        <span style={{ fontSize: '0.9rem' }}>{icon}</span>
-                                                                        <small className="d-block text-uppercase" style={{ fontSize: '0.65rem', fontWeight: '700' }}>
-                                                                            {label}
-                                                                        </small>
-                                                                    </div>
-                                                                    <strong style={{ fontSize: '0.9rem', lineHeight: '1.2' }}>{ratingInfo.display}</strong>
-                                                                </div>
-                                                            </Col>
-                                                        );
-                                                    })}
-                                                </Row>
-                                            </div>
-                                        )}
+                                        {/* Conditional rendering: Cards view or Charts view */}
+                                        {avalancheView === 'cards' ? (
+                                            <>
+                                                {avalancheForecast.report.dangerRatings && avalancheForecast.report.dangerRatings[0] && (
+                                                    <div className="mb-4">
+                                                        <Row className="g-2">
+                                                            {[
+                                                                { key: 'alp', label: 'Alpine', icon: '🏔️', elevation: '2500m+' },
+                                                                { key: 'tln', label: 'Treeline', icon: '⛰️', elevation: '1500-2500m' },
+                                                                { key: 'btl', label: 'Below Treeline', icon: '🌲', elevation: '<1500m' }
+                                                            ].map(({ key, label, icon, elevation }) => {
+                                                                const rating = avalancheForecast.report.dangerRatings[0].ratings[key];
+                                                                const ratingInfo = parseDangerRating(rating?.rating?.value);
 
-                                        {avalancheForecast.report.highlights && (
-                                            <div className="bg-white bg-opacity-10 rounded p-3 mb-3 border border-white border-opacity-10">
-                                                <div className="d-flex align-items-start gap-2">
-                                                    <AlertTriangle size={16} className="text-warning mt-1 flex-shrink-0" />
-                                                    <div>
-                                                        <strong className="text-warning d-block mb-1 text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>
-                                                            KEY MESSAGE
-                                                        </strong>
-                                                        <p className="text-white mb-0 small" style={{ lineHeight: '1.5' }}>
-                                                            {formatHighlights(avalancheForecast.report.highlights).substring(0, 150)}...
-                                                        </p>
+                                                                return (
+                                                                    <Col xs={4} key={key}>
+                                                                        <div
+                                                                            className="p-2 rounded text-center h-100 d-flex flex-column justify-content-center"
+                                                                            style={{
+                                                                                backgroundColor: ratingInfo.color,
+                                                                                color: ratingInfo.textColor,
+                                                                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                                                            }}
+                                                                        >
+                                                                            <div className="d-flex align-items-center justify-content-center gap-1 mb-1">
+                                                                                <span style={{ fontSize: '0.9rem' }}>{icon}</span>
+                                                                                <small className="d-block text-uppercase" style={{ fontSize: '0.65rem', fontWeight: '700' }}>
+                                                                                    {label}
+                                                                                </small>
+                                                                            </div>
+                                                                            <strong style={{ fontSize: '0.9rem', lineHeight: '1.2' }}>{ratingInfo.display}</strong>
+                                                                        </div>
+                                                                    </Col>
+                                                                );
+                                                            })}
+                                                        </Row>
                                                     </div>
-                                                </div>
-                                            </div>
+                                                )}
+
+                                                {avalancheForecast.report.highlights && (
+                                                    <div className="bg-white bg-opacity-10 rounded p-3 mb-3 border border-white border-opacity-10">
+                                                        <div className="d-flex align-items-start gap-2">
+                                                            <AlertTriangle size={16} className="text-warning mt-1 flex-shrink-0" />
+                                                            <div>
+                                                                <strong className="text-warning d-block mb-1 text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>
+                                                                    KEY MESSAGE
+                                                                </strong>
+                                                                <p className="text-white mb-0 small" style={{ lineHeight: '1.5' }}>
+                                                                    {formatHighlights(avalancheForecast.report.highlights).substring(0, 150)}...
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <>
+                                                {avalancheForecast.report.dangerRatings && avalancheForecast.report.dangerRatings.length > 0 && (
+                                                    <div className="mb-3">
+                                                        <AvalancheTrendChart dangerRatings={avalancheForecast.report.dangerRatings} />
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
+
 
                                         <div className="text-center">
                                             <span className="text-info fw-bold cursor-pointer d-inline-flex align-items-center gap-1 small hover-underline">
