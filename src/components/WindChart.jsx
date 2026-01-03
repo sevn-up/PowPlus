@@ -85,11 +85,16 @@ const WindChart = ({ hourlyData, elevation, timeRange = 24 }) => {
 
     return (
         <div className="p-3">
-            <div style={{ height: '300px' }}>
+            <div style={{ height: window.innerWidth < 768 ? '250px' : '300px' }}>
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                         data={chartData}
-                        margin={{ top: 10, right: 15, left: -15, bottom: 5 }}
+                        margin={{
+                            top: 10,
+                            right: window.innerWidth < 768 ? 5 : 15,
+                            left: window.innerWidth < 768 ? -20 : -15,
+                            bottom: 5
+                        }}
                     >
                         <CartesianGrid
                             strokeDasharray="3 3"

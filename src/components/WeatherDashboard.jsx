@@ -14,7 +14,7 @@ import WindChart from './WindChart';
 import SnowTrackingChart from './SnowTrackingChart';
 import UVIndexChart from './UVIndexChart';
 import { getWeatherIcon, getWindColor } from '../utils/weatherIcons.jsx';
-import { getSnowQuality, getVisibilityRating, formatWindDirection, getTemperatureColor, getSkiingConditionRating } from '../utils/skiConditions';
+import { getSnowQuality, getVisibilityRating, formatWindDirection, getTemperatureColor, getSkiingConditionRating, getFreezingLevelWarning } from '../utils/skiConditions';
 import './WeatherDashboard.css';
 
 const WeatherDashboard = () => {
@@ -107,8 +107,8 @@ const WeatherDashboard = () => {
             const deltaX = Math.abs(event.touches[0].clientX - touchStart.x);
             const deltaY = Math.abs(event.touches[0].clientY - touchStart.y);
 
-            // If moved more than 10px, consider it a scroll
-            if (deltaX > 10 || deltaY > 10) {
+            // If moved more than 20px, consider it a scroll (increased from 10px)
+            if (deltaX > 20 || deltaY > 20) {
                 setIsTouchMoving(true);
             }
         }
@@ -118,8 +118,9 @@ const WeatherDashboard = () => {
         // Mobile: only open modal if it was a tap (not a scroll)
         if (touchStart && !isTouchMoving) {
             const duration = Date.now() - touchStart.timestamp;
-            // Quick tap (less than 500ms) without movement = intentional tap
-            if (duration < 500) {
+            // Quick tap (less than 300ms) without movement = intentional tap
+            // This prevents modal from opening on press-and-hold gestures
+            if (duration < 300) {
                 setSelectedHourIndex(touchStart.hourIndex);
                 setShowHourlyModal(true);
             }
