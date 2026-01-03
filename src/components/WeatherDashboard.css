@@ -181,3 +181,23 @@
         opacity: 1;
     }
 }
+
+/* Mobile top spacing to prevent navbar overlap */
+@media (max-width: 768px) {
+    .mobile-top-spacing {
+        padding-top: 120px !important;
+    }
+}
+
+/* Hide scrollbar completely when sidebar is open */
+.hide-scrollbar {
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE 10+ */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+    /* Chrome, Safari, Opera */
+}

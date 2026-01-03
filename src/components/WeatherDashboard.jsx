@@ -32,6 +32,30 @@ const WeatherDashboard = () => {
     const allLocations = locations.map(loc => loc.name);
     const [savedLocations] = useState(allLocations);
     const [showSidebar, setShowSidebar] = useState(false);
+
+    // Lock body scroll when sidebar is open
+    // Hide main content scrollbar when sidebar is open (Bootstrap handles body scroll lock)
+    useEffect(() => {
+        const mainContent = document.querySelector('.flex-grow-1');
+        if (showSidebar) {
+            if (mainContent) {
+                mainContent.classList.add('hide-scrollbar');
+                mainContent.style.overflowY = 'hidden';
+            }
+        } else {
+            if (mainContent) {
+                mainContent.classList.remove('hide-scrollbar');
+                mainContent.style.overflowY = ''; // Reset to default CSS
+            }
+        }
+        // Cleanup on unmount
+        return () => {
+            if (mainContent) {
+                mainContent.classList.remove('hide-scrollbar');
+                mainContent.style.overflowY = ''; // Reset to default CSS
+            }
+        };
+    }, [showSidebar]);
     const [isAnimating, setIsAnimating] = useState(false); // For smooth transitions
     const [selectedHourIndex, setSelectedHourIndex] = useState(null); // For hourly detail modal
     const [showHourlyModal, setShowHourlyModal] = useState(false);
@@ -351,7 +375,9 @@ const WeatherDashboard = () => {
                 <Navbar variant="dark" expand={false} className="d-md-none fixed-top glass-card m-3 shadow-lg">
                     <Container fluid>
                         <Navbar.Brand href="#" className="d-flex align-items-center gap-2">
-                            <img src="/logo.png" alt="PowPlus Logo" className="rounded-circle" style={{ width: '30px', height: '30px' }} />
+                            <div className="bg-primary rounded-3 p-2" style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <CloudSnow size={18} className="text-white" />
+                            </div>
                             <span className="fw-bold text-shadow-sm">POWPLUS</span>
                         </Navbar.Brand>
                         <Navbar.Toggle aria-controls="offcanvasNavbar" onClick={() => setShowSidebar(true)} className="border-0" />
@@ -361,12 +387,14 @@ const WeatherDashboard = () => {
                             placement="start"
                             show={showSidebar}
                             onHide={() => setShowSidebar(false)}
+                            scroll={false}
+                            backdrop="static"
                             className="bg-dark text-white"
                         >
                             <Offcanvas.Header closeButton closeVariant="white">
-                                <Offcanvas.Title id="offcanvasNavbarLabel">Menu</Offcanvas.Title>
+                                <Offcanvas.Title id="offcanvasNavbarLabel">Locations</Offcanvas.Title>
                             </Offcanvas.Header>
-                            <Offcanvas.Body style={{ overflowY: 'auto' }} className="custom-scrollbar">
+                            <Offcanvas.Body>
                                 {/* Search Bar */}
                                 <Form onSubmit={handleSearch} className="mb-4 position-relative">
                                     <Form.Control
@@ -452,9 +480,9 @@ const WeatherDashboard = () => {
                 </Navbar>
 
                 {/* Main Content */}
-                <div className="flex-grow-1 overflow-auto p-3 p-md-5 no-overflow-x" style={{ height: '100vh' }}>
+                <div className="flex-grow-1 p-3 p-md-5 no-overflow-x" style={{ height: '100vh', overflowY: 'auto', overflowX: 'hidden' }}>
                     {weather && (
-                        <Container fluid="lg" className="mt-5 mt-md-0">
+                        <Container fluid="lg" className="mobile-top-spacing pt-md-0">
                             {/* Header */}
                             <div className="text-center text-white mb-5">
                                 <div className="d-inline-flex align-items-center gap-2 bg-dark bg-opacity-50 px-3 py-1 rounded-pill border border-white border-opacity-10 mb-3 shadow-sm backdrop-blur-md">
@@ -1064,7 +1092,7 @@ const WeatherDashboard = () => {
                                                 <div className="d-flex flex-column">
                                                     <small className="text-white-50 text-uppercase fw-bold" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>Forecast Area</small>
                                                     <div className="d-flex align-items-center gap-2 mt-1">
-                                                        <Badge bg="info" className="text-dark fw-bold">
+                                                        <Badge bg="info" className="text-dark fw-bold" style={{ wordBreak: 'break-word', maxWidth: '100%', whiteSpace: 'normal' }}>
                                                             {avalancheForecast.report?.title || 'Unavailable'}
                                                         </Badge>
                                                     </div>
