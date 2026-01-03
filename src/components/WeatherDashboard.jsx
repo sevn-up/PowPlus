@@ -11,6 +11,7 @@ import MapCard from './MapCard';
 import HourlyDetailModal from './HourlyDetailModal';
 import HourlyForecastChart from './HourlyForecastChart';
 import WindChart from './WindChart';
+import AvalancheTrendChart from './AvalancheTrendChart';
 import SnowTrackingChart from './SnowTrackingChart';
 import UVIndexChart from './UVIndexChart';
 import { getWeatherIcon, getWindColor } from '../utils/weatherIcons.jsx';
@@ -60,6 +61,7 @@ const WeatherDashboard = () => {
     const [selectedHourIndex, setSelectedHourIndex] = useState(null); // For hourly detail modal
     const [showHourlyModal, setShowHourlyModal] = useState(false);
     const [hourlyView, setHourlyView] = useState('cards'); // 'cards' or 'charts'
+    const [avalancheView, setAvalancheView] = useState('cards'); // 'cards' or 'charts' for avalanche card
     const [chartType, setChartType] = useState('temperature'); // 'temperature', 'wind', 'snow', 'uv'
     const [timeRange, setTimeRange] = useState(24); // 12, 24, 48, 72 hours
 
@@ -1084,7 +1086,44 @@ const WeatherDashboard = () => {
                                                 <AlertTriangle size={18} />
                                                 <span style={{ letterSpacing: '0.5px' }}>Avalanche Forecast</span>
                                             </div>
-                                            <ExternalLink size={14} className="text-white-50" />
+                                            <div className="d-flex align-items-center gap-2">
+                                                {/* Cards/Charts Toggle */}
+                                                <div className="d-flex gap-1" style={{ fontSize: '0.7rem' }}>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setAvalancheView('cards'); }}
+                                                        style={{
+                                                            padding: '4px 10px',
+                                                            borderRadius: '4px',
+                                                            background: avalancheView === 'cards' ? 'rgba(251, 191, 36, 0.3)' : 'rgba(251, 191, 36, 0.05)',
+                                                            border: avalancheView === 'cards' ? '1px solid rgba(251, 191, 36, 0.5)' : '1px solid rgba(251, 191, 36, 0.2)',
+                                                            color: '#fbbf24',
+                                                            fontWeight: avalancheView === 'cards' ? 'bold' : 'normal',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                    >
+                                                        <List size={12} style={{ marginRight: '4px' }} />
+                                                        Cards
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setAvalancheView('charts'); }}
+                                                        style={{
+                                                            padding: '4px 10px',
+                                                            borderRadius: '4px',
+                                                            background: avalancheView === 'charts' ? 'rgba(251, 191, 36, 0.3)' : 'rgba(251, 191, 36, 0.05)',
+                                                            border: avalancheView === 'charts' ? '1px solid rgba(251, 191, 36, 0.5)' : '1px solid rgba(251, 191, 36, 0.2)',
+                                                            color: '#fbbf24',
+                                                            fontWeight: avalancheView === 'charts' ? 'bold' : 'normal',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                    >
+                                                        <LineChart size={12} style={{ marginRight: '4px' }} />
+                                                        Charts
+                                                    </button>
+                                                </div>
+                                                <ExternalLink size={14} className="text-white-50" />
+                                            </div>
                                         </div>
 
                                         <div className="mb-3">
@@ -1112,57 +1151,72 @@ const WeatherDashboard = () => {
                                             </div>
                                         </div>
 
-                                        {avalancheForecast.report.dangerRatings && avalancheForecast.report.dangerRatings[0] && (
-                                            <div className="mb-4">
-                                                <Row className="g-2">
-                                                    {[
-                                                        { key: 'alp', label: 'Alpine', icon: '🏔️', elevation: '2500m+' },
-                                                        { key: 'tln', label: 'Treeline', icon: '⛰️', elevation: '1500-2500m' },
-                                                        { key: 'btl', label: 'Below Treeline', icon: '🌲', elevation: '<1500m' }
-                                                    ].map(({ key, label, icon, elevation }) => {
-                                                        const rating = avalancheForecast.report.dangerRatings[0].ratings[key];
-                                                        const ratingInfo = parseDangerRating(rating?.rating?.value);
 
-                                                        return (
-                                                            <Col xs={4} key={key}>
-                                                                <div
-                                                                    className="p-2 rounded text-center h-100 d-flex flex-column justify-content-center"
-                                                                    style={{
-                                                                        backgroundColor: ratingInfo.color,
-                                                                        color: ratingInfo.textColor,
-                                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                                                                    }}
-                                                                >
-                                                                    <div className="d-flex align-items-center justify-content-center gap-1 mb-1">
-                                                                        <span style={{ fontSize: '0.9rem' }}>{icon}</span>
-                                                                        <small className="d-block text-uppercase" style={{ fontSize: '0.65rem', fontWeight: '700' }}>
-                                                                            {label}
-                                                                        </small>
-                                                                    </div>
-                                                                    <strong style={{ fontSize: '0.9rem', lineHeight: '1.2' }}>{ratingInfo.display}</strong>
-                                                                </div>
-                                                            </Col>
-                                                        );
-                                                    })}
-                                                </Row>
-                                            </div>
-                                        )}
+                                        {/* Conditional rendering: Cards view or Charts view */}
+                                        {avalancheView === 'cards' ? (
+                                            <>
+                                                {avalancheForecast.report.dangerRatings && avalancheForecast.report.dangerRatings[0] && (
+                                                    <div className="mb-4">
+                                                        <Row className="g-2">
+                                                            {[
+                                                                { key: 'alp', label: 'Alpine', icon: '🏔️', elevation: '2500m+' },
+                                                                { key: 'tln', label: 'Treeline', icon: '⛰️', elevation: '1500-2500m' },
+                                                                { key: 'btl', label: 'Below Treeline', icon: '🌲', elevation: '<1500m' }
+                                                            ].map(({ key, label, icon, elevation }) => {
+                                                                const rating = avalancheForecast.report.dangerRatings[0].ratings[key];
+                                                                const ratingInfo = parseDangerRating(rating?.rating?.value);
 
-                                        {avalancheForecast.report.highlights && (
-                                            <div className="bg-white bg-opacity-10 rounded p-3 mb-3 border border-white border-opacity-10">
-                                                <div className="d-flex align-items-start gap-2">
-                                                    <AlertTriangle size={16} className="text-warning mt-1 flex-shrink-0" />
-                                                    <div>
-                                                        <strong className="text-warning d-block mb-1 text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>
-                                                            KEY MESSAGE
-                                                        </strong>
-                                                        <p className="text-white mb-0 small" style={{ lineHeight: '1.5' }}>
-                                                            {formatHighlights(avalancheForecast.report.highlights).substring(0, 150)}...
-                                                        </p>
+                                                                return (
+                                                                    <Col xs={4} key={key}>
+                                                                        <div
+                                                                            className="p-2 rounded text-center h-100 d-flex flex-column justify-content-center"
+                                                                            style={{
+                                                                                backgroundColor: ratingInfo.color,
+                                                                                color: ratingInfo.textColor,
+                                                                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                                                            }}
+                                                                        >
+                                                                            <div className="d-flex align-items-center justify-content-center gap-1 mb-1">
+                                                                                <span style={{ fontSize: '0.9rem' }}>{icon}</span>
+                                                                                <small className="d-block text-uppercase" style={{ fontSize: '0.65rem', fontWeight: '700' }}>
+                                                                                    {label}
+                                                                                </small>
+                                                                            </div>
+                                                                            <strong style={{ fontSize: '0.9rem', lineHeight: '1.2' }}>{ratingInfo.display}</strong>
+                                                                        </div>
+                                                                    </Col>
+                                                                );
+                                                            })}
+                                                        </Row>
                                                     </div>
-                                                </div>
-                                            </div>
+                                                )}
+
+                                                {avalancheForecast.report.highlights && (
+                                                    <div className="bg-white bg-opacity-10 rounded p-3 mb-3 border border-white border-opacity-10">
+                                                        <div className="d-flex align-items-start gap-2">
+                                                            <AlertTriangle size={16} className="text-warning mt-1 flex-shrink-0" />
+                                                            <div>
+                                                                <strong className="text-warning d-block mb-1 text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>
+                                                                    KEY MESSAGE
+                                                                </strong>
+                                                                <p className="text-white mb-0 small" style={{ lineHeight: '1.5' }}>
+                                                                    {formatHighlights(avalancheForecast.report.highlights).substring(0, 150)}...
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <>
+                                                {avalancheForecast.report.dangerRatings && avalancheForecast.report.dangerRatings.length > 0 && (
+                                                    <div className="mb-3">
+                                                        <AvalancheTrendChart dangerRatings={avalancheForecast.report.dangerRatings} />
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
+
 
                                         <div className="text-center">
                                             <span className="text-info fw-bold cursor-pointer d-inline-flex align-items-center gap-1 small hover-underline">
