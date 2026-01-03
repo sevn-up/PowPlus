@@ -13,6 +13,7 @@ import HourlyForecastChart from './HourlyForecastChart';
 import WindChart from './WindChart';
 import AvalancheTrendChart from './AvalancheTrendChart';
 import SnowTrackingChart from './SnowTrackingChart';
+import CardToggleButtons from './CardToggleButtons';
 import UVIndexChart from './UVIndexChart';
 import { getWeatherIcon, getWindColor } from '../utils/weatherIcons.jsx';
 import { getSnowQuality, getVisibilityRating, formatWindDirection, getTemperatureColor, getSkiingConditionRating, getFreezingLevelWarning } from '../utils/skiConditions';
@@ -530,38 +531,12 @@ const WeatherDashboard = () => {
 
                                         <div className="d-flex align-items-center gap-3">
                                             {/* Toggle Buttons */}
-                                            <div className="btn-group btn-group-sm">
-                                                <button
-                                                    className="btn btn-sm d-flex align-items-center gap-1"
-                                                    style={{
-                                                        fontSize: '0.7rem',
-                                                        padding: '0.35rem 0.6rem',
-                                                        background: hourlyView === 'cards' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.05)',
-                                                        border: hourlyView === 'cards' ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(59, 130, 246, 0.2)',
-                                                        color: '#fff',
-                                                        fontWeight: hourlyView === 'cards' ? 'bold' : 'normal'
-                                                    }}
-                                                    onClick={() => setHourlyView('cards')}
-                                                >
-                                                    <List size={12} />
-                                                    Cards
-                                                </button>
-                                                <button
-                                                    className="btn btn-sm d-flex align-items-center gap-1"
-                                                    style={{
-                                                        fontSize: '0.7rem',
-                                                        padding: '0.35rem 0.6rem',
-                                                        background: hourlyView === 'charts' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.05)',
-                                                        border: hourlyView === 'charts' ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(59, 130, 246, 0.2)',
-                                                        color: '#fff',
-                                                        fontWeight: hourlyView === 'charts' ? 'bold' : 'normal'
-                                                    }}
-                                                    onClick={() => setHourlyView('charts')}
-                                                >
-                                                    <LineChart size={12} />
-                                                    Charts
-                                                </button>
-                                            </div>
+                                            <CardToggleButtons
+                                                view={hourlyView}
+                                                setView={setHourlyView}
+                                                theme="primary"
+                                                emphasis="normal"
+                                            />
 
                                             <small className="text-white-50 fst-italic d-none d-md-block" style={{ fontSize: '0.65rem' }}>
                                                 Next 24 hours
@@ -1088,40 +1063,13 @@ const WeatherDashboard = () => {
                                             </div>
                                             <div className="d-flex align-items-center gap-2">
                                                 {/* Cards/Charts Toggle */}
-                                                <div className="d-flex gap-1" style={{ fontSize: '0.7rem' }}>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); setAvalancheView('cards'); }}
-                                                        style={{
-                                                            padding: '4px 10px',
-                                                            borderRadius: '4px',
-                                                            background: avalancheView === 'cards' ? 'rgba(251, 191, 36, 0.3)' : 'rgba(251, 191, 36, 0.05)',
-                                                            border: avalancheView === 'cards' ? '1px solid rgba(251, 191, 36, 0.5)' : '1px solid rgba(251, 191, 36, 0.2)',
-                                                            color: '#fbbf24',
-                                                            fontWeight: avalancheView === 'cards' ? 'bold' : 'normal',
-                                                            cursor: 'pointer',
-                                                            transition: 'all 0.2s'
-                                                        }}
-                                                    >
-                                                        <List size={12} style={{ marginRight: '4px' }} />
-                                                        Cards
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); setAvalancheView('charts'); }}
-                                                        style={{
-                                                            padding: '4px 10px',
-                                                            borderRadius: '4px',
-                                                            background: avalancheView === 'charts' ? 'rgba(251, 191, 36, 0.3)' : 'rgba(251, 191, 36, 0.05)',
-                                                            border: avalancheView === 'charts' ? '1px solid rgba(251, 191, 36, 0.5)' : '1px solid rgba(251, 191, 36, 0.2)',
-                                                            color: '#fbbf24',
-                                                            fontWeight: avalancheView === 'charts' ? 'bold' : 'normal',
-                                                            cursor: 'pointer',
-                                                            transition: 'all 0.2s'
-                                                        }}
-                                                    >
-                                                        <LineChart size={12} style={{ marginRight: '4px' }} />
-                                                        Charts
-                                                    </button>
-                                                </div>
+                                                <CardToggleButtons
+                                                    view={avalancheView}
+                                                    setView={setAvalancheView}
+                                                    theme="warning"
+                                                    emphasis="high"
+                                                    stopPropagation={true}
+                                                />
                                                 <ExternalLink size={14} className="text-white-50" />
                                             </div>
                                         </div>
