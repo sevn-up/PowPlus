@@ -37,17 +37,35 @@ const HourlyDetailModal = ({ show, onHide, hourData, hourIndex, elevation }) => 
     const dateLabel = hourTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
     return (
-        <Modal show={show} onHide={onHide} size="lg" centered>
-            <Modal.Header closeButton className="bg-dark text-white border-secondary">
+        <Modal
+            show={show}
+            onHide={onHide}
+            size="lg"
+            centered
+            className="hourly-detail-modal"
+            contentClassName="glass-card border-0 text-white"
+            style={{ backdropFilter: 'blur(5px)' }}
+        >
+            <Modal.Header
+                closeButton
+                closeVariant="white"
+                className="border-bottom border-secondary bg-transparent"
+            >
                 <Modal.Title>
-                    <div className="d-flex flex-column">
-                        <small className="text-white-50">{dateLabel}</small>
-                        <h5 className="mb-0">{hourLabel === 'Now' ? 'Right Now' : `${hourLabel}:00`}</h5>
+                    <div>
+                        <div className="d-flex align-items-center gap-2 text-info fw-bold">
+                            <Thermometer size={20} />
+                            Hourly Forecast
+                        </div>
+                        <div className="d-flex flex-column mt-1">
+                            <small className="text-white-50">{dateLabel}</small>
+                            <h5 className="mb-0">{hourLabel === 'Now' ? 'Right Now' : `${hourLabel}:00`}</h5>
+                        </div>
                     </div>
                 </Modal.Title>
             </Modal.Header>
 
-            <Modal.Body className="bg-dark text-white">
+            <Modal.Body className="bg-transparent">
                 {/* Weather Summary Section */}
                 <div className="text-center mb-4 pb-4 border-bottom border-secondary">
                     <div className="mb-3">
@@ -63,11 +81,25 @@ const HourlyDetailModal = ({ show, onHide, hourData, hourIndex, elevation }) => 
                     </h2>
                 </div>
 
+                {/* Powder Alert Banner - only show when snowing */}
+                {snow > 0 && (
+                    <div className="p-3 rounded-4 mb-3 position-relative overflow-hidden"
+                        style={{
+                            background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(96, 165, 250, 0.05))',
+                            border: '1px solid rgba(59, 130, 246, 0.3)'
+                        }}>
+                        <div className="d-flex align-items-center gap-2">
+                            <Snowflake size={20} className="text-info" />
+                            <span className="text-info fw-bold">{snow.toFixed(1)}cm fresh powder this hour!</span>
+                        </div>
+                    </div>
+                )}
+
                 {/* Metrics Grid */}
                 <Row className="g-3 mb-4">
                     {/* Wind Card */}
                     <Col xs={6} md={4}>
-                        <Card className="bg-dark border-secondary h-100">
+                        <Card className="bg-transparent border-secondary h-100">
                             <Card.Body className="text-center">
                                 <Wind
                                     size={32}
@@ -92,7 +124,7 @@ const HourlyDetailModal = ({ show, onHide, hourData, hourIndex, elevation }) => 
 
                     {/* Snow Card */}
                     <Col xs={6} md={4}>
-                        <Card className="bg-dark border-secondary h-100">
+                        <Card className="bg-transparent border-secondary h-100">
                             <Card.Body className="text-center">
                                 <Snowflake
                                     size={32}
@@ -112,7 +144,7 @@ const HourlyDetailModal = ({ show, onHide, hourData, hourIndex, elevation }) => 
 
                     {/* Clouds Card */}
                     <Col xs={6} md={4}>
-                        <Card className="bg-dark border-secondary h-100">
+                        <Card className="bg-transparent border-secondary h-100">
                             <Card.Body className="text-center">
                                 <Cloud size={32} className="mb-2 text-white-50" />
                                 <h6 className="text-white-50 mb-2">Cloud Cover</h6>
@@ -136,7 +168,7 @@ const HourlyDetailModal = ({ show, onHide, hourData, hourIndex, elevation }) => 
 
                     {/* Precipitation Card */}
                     <Col xs={6} md={4}>
-                        <Card className="bg-dark border-secondary h-100">
+                        <Card className="bg-transparent border-secondary h-100">
                             <Card.Body className="text-center">
                                 <Droplets size={32} className="mb-2 text-info" />
                                 <h6 className="text-white-50 mb-2">Precipitation</h6>
@@ -150,7 +182,7 @@ const HourlyDetailModal = ({ show, onHide, hourData, hourIndex, elevation }) => 
 
                     {/* Visibility Card */}
                     <Col xs={6} md={4}>
-                        <Card className="bg-dark border-secondary h-100">
+                        <Card className="bg-transparent border-secondary h-100">
                             <Card.Body className="text-center">
                                 <Eye
                                     size={32}
@@ -176,7 +208,7 @@ const HourlyDetailModal = ({ show, onHide, hourData, hourIndex, elevation }) => 
 
                     {/* Pressure Card */}
                     <Col xs={6} md={4}>
-                        <Card className="bg-dark border-secondary h-100">
+                        <Card className="bg-transparent border-secondary h-100">
                             <Card.Body className="text-center">
                                 <Gauge size={32} className="mb-2 text-white-50" />
                                 <h6 className="text-white-50 mb-2">Pressure</h6>
@@ -235,7 +267,7 @@ const HourlyDetailModal = ({ show, onHide, hourData, hourIndex, elevation }) => 
                     </Card.Body>
                 </Card>
             </Modal.Body>
-        </Modal>
+        </Modal >
     );
 };
 

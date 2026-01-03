@@ -120,26 +120,62 @@ export const getSkiingConditionRating = (hourData, elevation = 2000) => {
     let score = 50; // Start at neutral
     const insights = [];
 
-    // Snow factor (most important)
+    // Snow factor (most important - weighted heavily)
     if (hourData.snowfall > 5) {
-        score += 30;
-        insights.push(`Heavy snowfall (${hourData.snowfall}cm)`);
+        score += 35; // Increased from 30
+        insights.push(`Heavy snowfall (${hourData.snowfall.toFixed(1)}cm)`);
     } else if (hourData.snowfall > 2) {
-        score += 20;
-        insights.push(`Moderate snowfall (${hourData.snowfall}cm)`);
+        score += 25; // Increased from 20
+        insights.push(`Moderate snowfall (${hourData.snowfall.toFixed(1)}cm)`);
     } else if (hourData.snowfall > 0) {
-        score += 10;
-        insights.push(`Light snowfall (${hourData.snowfall}cm)`);
+        score += 15; // Increased from 10
+        insights.push(`Light snowfall (${hourData.snowfall.toFixed(1)}cm)`);
     }
 
-    // Temperature factor
+    // Temperature factor - elevation-aware scoring
+    // At high elevations, warmer temps can still mean great powder
     const temp = hourData.temperature_2m;
-    if (temp >= -12 && temp <= -5) {
-        score += 15;
-        insights.push('Perfect powder temperature');
-    } else if (temp > 0) {
-        score -= 20;
+
+    // Determine optimal temperature range based on elevation
+    let optimalTempLow, optimalTempHigh, goodTempHigh;
+    if (elevation >= 2500) {
+        // High alpine - colder is better
+        optimalTempLow = -15;
+        optimalTempHigh = -3;
+        goodTempHigh = 0;
+    } else if (elevation >= 1500) {
+        // Mid mountain - moderate range
+        optimalTempLow = -12;
+        optimalTempHigh = -2;
+        goodTempHigh = 1;
+    } else {
+        // Lower elevation - need colder temps
+        optimalTempLow = -10;
+        optimalTempHigh = -5;
+        goodTempHigh = -1;
+    }
+
+    // Score based on temperature with elevation consideration
+    if (temp >= optimalTempLow && temp <= optimalTempHigh) {
+        // Perfect powder temperature for this elevation
+        score += 20; // Increased from 15
+        insights.push('Ideal powder temperature');
+    } else if (temp > optimalTempHigh && temp <= goodTempHigh) {
+        // Still good snow, just slightly warmer
+        score += 10;
+        insights.push('Good snow temperature');
+    } else if (temp > goodTempHigh && temp <= 2) {
+        // Getting warm - snow quality declining
+        score -= 5;
+        insights.push('Warming conditions');
+    } else if (temp > 2) {
+        // Too warm - wet snow
+        score -= 15; // Reduced penalty from -20
         insights.push('Warm - wet snow conditions');
+    } else if (temp < optimalTempLow) {
+        // Very cold - can be challenging
+        score -= 5;
+        insights.push('Very cold conditions');
     }
 
     // Wind factor
